@@ -318,3 +318,42 @@ export type DecisionSupportResponse = {
   story_mode: Array<{ step: number; title: string; narrative: string }>;
   what_if_disclaimer: string;
 };
+
+/** Comparison Lab — guided metric pairing (same filters as analytics) */
+export type ComparisonMetricDto = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  dataType: "numeric" | "categorical" | "binary" | "ratio";
+  entity: "preconception" | "pregnancy" | "postnatal" | "infant" | "outcome";
+  level: "individual" | "aggregated";
+  isTimeIndex?: boolean;
+};
+
+export type ComparisonCompareResult = { ok: boolean; reason?: string };
+
+export type ComparisonLabCatalogResponse = {
+  metrics: ComparisonMetricDto[];
+  compatibility: Record<string, Record<string, ComparisonCompareResult>>;
+};
+
+export type ComparisonLabRunResponse = {
+  chartKind: string;
+  metricA: { id: string; label: string; shortLabel: string };
+  metricB: { id: string; label: string; shortLabel: string };
+  metricC?: { id: string; label: string; shortLabel: string };
+  nRows: number;
+  stats: Record<string, unknown>;
+  insight: string;
+  scatter?: Array<{ assessmentId: string; x: number; y: number; z?: number }>;
+  lineSeries?: Array<{ period: string; yMean: number; n: number }>;
+  barGroups?: Array<{ key: string; n: number; mean: number; std: number }>;
+  contingency?: {
+    aKeys: string[];
+    bKeys: string[];
+    counts: number[][];
+    chi2: number;
+    df: number;
+    pValue: number | null;
+  } | null;
+};

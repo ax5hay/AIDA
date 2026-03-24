@@ -319,6 +319,8 @@ export const HELP_API_ROUTES = [
   { route: "GET …/analytics/intelligence", role: "Public health intelligence: pipelines, gaps, correlations, cohorts, time series, distributions, multivariate, KPI deltas, anomalies (z/IQR/isolation), cross-entity links, deterministic what/why/next insights (cached ~60s)." },
   { route: "GET …/analytics/decision-support", role: "Decision layer: top 5 actions, program health score 0–100, alert center, illustrative what-if, data quality, benchmarking (half-window + districts), story-mode steps (cached ~45s)." },
   { route: "GET …/analytics/correlations", role: "anemia_vs_bmi + correlation matrix." },
+  { route: "GET …/analytics/comparison-lab/catalog", role: "Comparison Lab: metric registry + precomputed compatibility matrix (no DB)." },
+  { route: "GET …/analytics/comparison-lab/run?metricA=&metricB=&metricC=", role: "Comparison Lab: filtered assessment rows, stats (Pearson, ANOVA, χ²), auto chart payload; cached ~30s." },
   { route: "GET …/analytics/district-rollup", role: "District aggregates for charts." },
   { route: "GET …/analytics/clinical-cross-section", role: "Scatter source pairs." },
   { route: "GET …/analytics/anomalies?metric=", role: "Z-score flags for live_births or maternal_deaths." },

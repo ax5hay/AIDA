@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Param, Query } from "@nestjs/common";
 import type { ExplorerFilters } from "./analytics-filters";
 import { AnalyticsService } from "./analytics.service";
 
@@ -74,6 +74,27 @@ export class AnalyticsController {
     @Query("facilityId") facilityId?: string,
   ) {
     return this.analytics.decisionSupport(this.filters(from, to, district, facilityId));
+  }
+
+  @Get("comparison-lab/catalog")
+  comparisonLabCatalog() {
+    return this.analytics.comparisonLabCatalog();
+  }
+
+  @Get("comparison-lab/run")
+  comparisonLabRun(
+    @Query("metricA") metricA?: string,
+    @Query("metricB") metricB?: string,
+    @Query("metricC") metricC?: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("district") district?: string,
+    @Query("facilityId") facilityId?: string,
+  ) {
+    if (!metricA || !metricB) {
+      throw new BadRequestException("metricA and metricB are required.");
+    }
+    return this.analytics.comparisonLabRun(metricA, metricB, this.filters(from, to, district, facilityId), metricC);
   }
 
   @Get("correlations")

@@ -5,6 +5,8 @@ import type {
   AnomaliesResponse,
   AssessmentDetailResponse,
   ClinicalCrossSectionResponse,
+  ComparisonLabCatalogResponse,
+  ComparisonLabRunResponse,
   CorrelationsResponse,
   DistrictRollupRow,
   ExplorerResponse,
@@ -133,6 +135,26 @@ export async function postAiIntelligenceInsights(
 export async function getAiModels(signal?: AbortSignal) {
   const res = await fetch(`${base()}/ai/models`, { signal, cache: "no-store" });
   return parseJson<{ data: Array<{ id: string }> }>(res, "ai models");
+}
+
+export async function getComparisonLabCatalog(signal?: AbortSignal) {
+  const res = await fetch(`${base()}/analytics/comparison-lab/catalog`, { signal, cache: "no-store" });
+  return parseJson<ComparisonLabCatalogResponse>(res, "comparison-lab catalog");
+}
+
+export async function getComparisonLabRun(
+  opts: { metricA: string; metricB: string; metricC?: string; filters?: AnalyticsFilters },
+  signal?: AbortSignal,
+) {
+  const qs = new URLSearchParams(filtersToSearchParams(opts.filters ?? {}));
+  qs.set("metricA", opts.metricA);
+  qs.set("metricB", opts.metricB);
+  if (opts.metricC) qs.set("metricC", opts.metricC);
+  const res = await fetch(`${base()}/analytics/comparison-lab/run?${qs.toString()}`, {
+    signal,
+    cache: "no-store",
+  });
+  return parseJson<ComparisonLabRunResponse>(res, "comparison-lab run");
 }
 
 export async function getAnomalies(

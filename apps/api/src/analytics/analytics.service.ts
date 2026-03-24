@@ -1,5 +1,5 @@
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { Cache } from "cache-manager";
 import { Prisma } from "@aida/db";
 import {
@@ -25,6 +25,19 @@ import {
   validateManagedVsIdentified,
   validateScreeningVsRegistered,
   correlationCoefficient,
+  COMPARISON_METRICS,
+  buildCompatibilityMatrix,
+  getMetricDef,
+  canCompareMetrics,
+  canTripleMetric,
+  selectChartKind,
+  buildInsightSummary,
+  pearsonSignificance,
+  leastSquaresRegression,
+  groupNumericByCategory,
+  anovaPValue,
+  chiSquareContingency,
+  type ComparisonMetricDef,
   type ValidationIssue,
 } from "@aida/analytics-engine";
 import { correlationMatrix, detectAnomalies, type AnomalyFlag } from "@aida/ml-engine";
@@ -41,6 +54,7 @@ import { buildDecisionSupportBundle } from "./decision-support-aggregator";
 import { buildPublicHealthIntelligence } from "./intelligence-aggregator";
 import { CHC_ASSESSMENT_ANALYTICS_INCLUDE, type ChcAssessmentAnalytics } from "./assessment-include";
 import type { ExplorerFilters } from "./analytics-filters";
+import { extractComparisonMetric } from "./comparison-lab-metrics";
 
 /** Prisma nested rows include id/assessmentId; analytics helpers expect numeric field maps. */
 function asNumericRecord(obj: object | null | undefined): Record<string, number> | undefined {
@@ -811,6 +825,219 @@ export class AnalyticsService {
       pregAnemiaVsLive,
       preconceptionAnemiaIdVsManaged,
     };
+    await this.cache.set(key, payload, 30_000);
+    return payload;
+  }
+
+  /** Comparison Lab: metric catalog + precomputed compatibility matrix (no DB). */
+  comparisonLabCatalog() {
+    return {
+      metrics: COMPARISON_METRICS,
+      compatibility: buildCompatibilityMatrix(COMPARISON_METRICS),
+    };
+  }
+
+  /**
+   * Run a guided comparison for metric A vs B (optional C for 3D bubble).
+   * Cached ~30s per filter + metric tuple.
+   */
+  async comparisonLabRun(metricA: string, metricB: string, f: ExplorerFilters, metricC?: string) {
+    const ma = getMetricDef(metricA);
+    const mb = getMetricDef(metricB);
+    if (!ma || !mb) {
+      throw new BadRequestException("Unknown metric id.");
+    }
+    const pair = canCompareMetrics(ma, mb);
+    if (!pair.ok) {
+      throw new BadRequestException(pair.reason ?? "Incompatible metrics.");
+    }
+    let mc: ComparisonMetricDef | undefined;
+    if (metricC) {
+      const t = getMetricDef(metricC);
+      if (!t) throw new BadRequestException("Unknown metric C.");
+      const triple = canTripleMetric(ma, mb, t);
+      if (!triple.ok) throw new BadRequestException(triple.reason);
+      mc = t;
+    }
+
+    const key = this.cacheKey(`comparison-lab:${metricA}:${metricB}:${metricC ?? ""}`, f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_INTELLIGENCE_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
+
+    const chartKind = selectChartKind(ma, mb, mc ?? null);
+
+    type ScatterRow = { assessmentId: string; x: number; y: number; z?: number };
+    const payload: Record<string, unknown> = {
+      chartKind,
+      metricA: { id: ma.id, label: ma.label, shortLabel: ma.shortLabel },
+      metricB: { id: mb.id, label: mb.label, shortLabel: mb.shortLabel },
+      metricC: mc ? { id: mc.id, label: mc.label, shortLabel: mc.shortLabel } : undefined,
+      nRows: rows.length,
+      stats: {} as Record<string, number | null | undefined | object>,
+      insight: "",
+    };
+
+    if (chartKind === "bubble_3d" && mc) {
+      const scatter: ScatterRow[] = [];
+      for (const r of rows) {
+        const va = extractComparisonMetric(r, ma.id);
+        const vb = extractComparisonMetric(r, mb.id);
+        const vc = extractComparisonMetric(r, mc.id);
+        if (va?.kind === "number" && vb?.kind === "number" && vc?.kind === "number") {
+          scatter.push({ assessmentId: r.id, x: va.value, y: vb.value, z: vc.value });
+        }
+      }
+      const xs = scatter.map((p) => p.x);
+      const ys = scatter.map((p) => p.y);
+      const rAb = correlationCoefficient(xs, ys);
+      const { pValue } = pearsonSignificance(rAb, scatter.length);
+      payload.scatter = scatter;
+      payload.stats = {
+        pearsonR: rAb,
+        pearsonP: pValue,
+        nPoints: scatter.length,
+      };
+      payload.insight = buildInsightSummary({
+        chartKind,
+        n: scatter.length,
+        pearsonR: rAb,
+        pValue,
+        labelA: ma.shortLabel,
+        labelB: mb.shortLabel,
+      });
+      await this.cache.set(key, payload, 30_000);
+      return payload;
+    }
+
+    if (chartKind === "line_trend") {
+      const timeMetric = ma.isTimeIndex ? ma : mb;
+      const valueMetric = ma.isTimeIndex ? mb : ma;
+      const map = new Map<string, number[]>();
+      for (const r of rows) {
+        const vt = extractComparisonMetric(r, timeMetric.id);
+        const vv = extractComparisonMetric(r, valueMetric.id);
+        if (vt?.kind === "string" && vv?.kind === "number") {
+          const arr = map.get(vt.value) ?? [];
+          arr.push(vv.value);
+          map.set(vt.value, arr);
+        }
+      }
+      const lineSeries = [...map.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([period, vals]) => ({
+          period,
+          yMean: vals.reduce((s, v) => s + v, 0) / vals.length,
+          n: vals.length,
+        }));
+      let pearsonR: number | null = null;
+      let pearsonP: number | null = null;
+      if (lineSeries.length >= 3) {
+        const xs = lineSeries.map((_, i) => i);
+        const ys = lineSeries.map((l) => l.yMean);
+        pearsonR = correlationCoefficient(xs, ys);
+        const sig = pearsonSignificance(pearsonR, lineSeries.length);
+        pearsonP = sig.pValue;
+      }
+      payload.lineSeries = lineSeries;
+      payload.stats = { pearsonR, pearsonP, nPeriods: lineSeries.length };
+      payload.insight = buildInsightSummary({
+        chartKind,
+        n: rows.length,
+        pearsonR,
+        pValue: pearsonP,
+        labelA: timeMetric.shortLabel,
+        labelB: valueMetric.shortLabel,
+      });
+      await this.cache.set(key, payload, 30_000);
+      return payload;
+    }
+
+    if (chartKind === "bar_groups") {
+      const catRows: Array<{ category: string; value: number }> = [];
+      for (const r of rows) {
+        const va = extractComparisonMetric(r, ma.id);
+        const vb = extractComparisonMetric(r, mb.id);
+        if (ma.dataType === "categorical" && va?.kind === "string" && vb?.kind === "number") {
+          catRows.push({ category: va.value, value: vb.value });
+        } else if (mb.dataType === "categorical" && vb?.kind === "string" && va?.kind === "number") {
+          catRows.push({ category: vb.value, value: va.value });
+        }
+      }
+      const barGroups = groupNumericByCategory(catRows);
+      const anovaP = anovaPValue(barGroups);
+      payload.barGroups = barGroups;
+      payload.stats = { anovaP, nPoints: catRows.length };
+      payload.insight = buildInsightSummary({
+        chartKind,
+        n: catRows.length,
+        anovaP,
+        labelA: ma.shortLabel,
+        labelB: mb.shortLabel,
+      });
+      await this.cache.set(key, payload, 30_000);
+      return payload;
+    }
+
+    if (chartKind === "contingency_heatmap") {
+      const catPairs: Array<{ a: string; b: string }> = [];
+      for (const r of rows) {
+        const va = extractComparisonMetric(r, ma.id);
+        const vb = extractComparisonMetric(r, mb.id);
+        if (va?.kind === "string" && vb?.kind === "string") {
+          catPairs.push({ a: va.value, b: vb.value });
+        }
+      }
+      const chi = chiSquareContingency(catPairs);
+      payload.contingency = chi
+        ? { aKeys: chi.aKeys, bKeys: chi.bKeys, counts: chi.counts, chi2: chi.chi2, df: chi.df, pValue: chi.pValue }
+        : null;
+      payload.stats = { chi2: chi?.chi2 ?? null, chi2P: chi?.pValue ?? null, chi2Df: chi?.df ?? null };
+      payload.insight = buildInsightSummary({
+        chartKind,
+        n: catPairs.length,
+        chi2P: chi?.pValue ?? null,
+        labelA: ma.shortLabel,
+        labelB: mb.shortLabel,
+      });
+      await this.cache.set(key, payload, 30_000);
+      return payload;
+    }
+
+    /** scatter_regression default */
+    const scatter: ScatterRow[] = [];
+    for (const r of rows) {
+      const va = extractComparisonMetric(r, ma.id);
+      const vb = extractComparisonMetric(r, mb.id);
+      if (va?.kind === "number" && vb?.kind === "number") {
+        scatter.push({ assessmentId: r.id, x: va.value, y: vb.value });
+      }
+    }
+    const xs = scatter.map((p) => p.x);
+    const ys = scatter.map((p) => p.y);
+    const pearsonR = correlationCoefficient(xs, ys);
+    const { pValue } = pearsonSignificance(pearsonR, scatter.length);
+    const regression = leastSquaresRegression(scatter.map((p) => ({ assessmentId: p.assessmentId, x: p.x, y: p.y })));
+    payload.scatter = scatter;
+    payload.stats = {
+      pearsonR,
+      pearsonP: pValue,
+      regression,
+      nPoints: scatter.length,
+    };
+    payload.insight = buildInsightSummary({
+      chartKind,
+      n: scatter.length,
+      pearsonR,
+      pValue,
+      labelA: ma.shortLabel,
+      labelB: mb.shortLabel,
+    });
     await this.cache.set(key, payload, 30_000);
     return payload;
   }

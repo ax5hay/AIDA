@@ -17,6 +17,7 @@ const links = [
   { href: "/outcomes", label: "Outcomes" },
   { href: "/high-risk", label: "High-risk" },
   { href: "/correlations", label: "Correlations" },
+  { href: "/comparison-lab", label: "Comparison Lab" },
   { href: "/explorer", label: "Explorer" },
   { href: "/ai", label: "AI Insights" },
   { href: "/settings", label: "Settings" },

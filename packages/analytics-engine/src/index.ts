@@ -6,3 +6,4 @@ export * from "./intelligence";
 export * from "./pipelines";
 export * from "./insights";
 export * from "./decision-support";
+export * from "./comparison-lab";
