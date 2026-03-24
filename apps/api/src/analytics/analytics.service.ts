@@ -27,12 +27,18 @@ import {
   correlationCoefficient,
   type ValidationIssue,
 } from "@aida/analytics-engine";
-import { correlationMatrix, detectAnomalies } from "@aida/ml-engine";
+import { correlationMatrix, detectAnomalies, type AnomalyFlag } from "@aida/ml-engine";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   CHC_ASSESSMENT_ANALYTICS_INCLUDE,
   type ChcAssessmentAnalytics,
 } from "./assessment-include";
+
+/** Prisma nested rows include id/assessmentId; analytics helpers expect numeric field maps. */
+function asNumericRecord(obj: object | null | undefined): Record<string, number> | undefined {
+  if (obj == null) return undefined;
+  return obj as unknown as Record<string, number>;
+}
 
 export type ExplorerFilters = {
   from?: string;
@@ -157,7 +163,7 @@ export class AnalyticsService {
       if (s) {
         const { total_anc_registered, ...rest } = s;
         issues.push(
-          ...validateScreeningVsRegistered(total_anc_registered, rest as Record<string, number>),
+          ...validateScreeningVsRegistered(total_anc_registered, asNumericRecord(rest) ?? {}),
         );
       }
       const pi = r.preconceptionWomenIdentified;
@@ -165,8 +171,8 @@ export class AnalyticsService {
       if (pi && pm) {
         issues.push(
           ...validateManagedVsIdentified(
-            pi as Record<string, number>,
-            pm as Record<string, number>,
+            asNumericRecord(pi) ?? {},
+            asNumericRecord(pm) ?? {},
             "preconception",
           ),
         );
@@ -176,8 +182,8 @@ export class AnalyticsService {
       if (pgi && pgm) {
         issues.push(
           ...validateManagedVsIdentified(
-            pgi as Record<string, number>,
-            pgm as Record<string, number>,
+            asNumericRecord(pgi) ?? {},
+            asNumericRecord(pgm) ?? {},
             "pregnancy",
           ),
         );
@@ -202,11 +208,11 @@ export class AnalyticsService {
       funnel: {
         preconception: {
           identified_total: PRECONCEPTION_WOMEN_IDENTIFIED_FIELDS.reduce(
-            (s, k) => s + (preIdTot[k] ?? 0),
+            (s: number, k: string) => s + ((preIdTot as Record<string, number>)[k] ?? 0),
             0,
           ),
           managed_total: PRECONCEPTION_WOMEN_IDENTIFIED_FIELDS.reduce(
-            (s, k) => s + (preManTot[k] ?? 0),
+            (s: number, k: string) => s + ((preManTot as Record<string, number>)[k] ?? 0),
             0,
           ),
           interventions: sumFields(intRows, PRECONCEPTION_INTERVENTIONS_FIELDS),
@@ -214,11 +220,11 @@ export class AnalyticsService {
         pregnancy: {
           registered_total: regTot.total_anc_registered,
           identified_total: PREGNANT_WOMEN_IDENTIFIED_FIELDS.reduce(
-            (s, k) => s + (pregIdTot[k] ?? 0),
+            (s: number, k: string) => s + ((pregIdTot as Record<string, number>)[k] ?? 0),
             0,
           ),
           managed_total: PREGNANT_WOMEN_IDENTIFIED_FIELDS.reduce(
-            (s, k) => s + (pregManTot[k] ?? 0),
+            (s: number, k: string) => s + ((pregManTot as Record<string, number>)[k] ?? 0),
             0,
           ),
         },
@@ -258,17 +264,17 @@ export class AnalyticsService {
       string,
       (r: ChcAssessmentAnalytics) => Record<string, number> | null | undefined
     > = {
-      preconception_women_identified: (r) => r.preconceptionWomenIdentified ?? undefined,
-      preconception_interventions: (r) => r.preconceptionInterventions ?? undefined,
-      preconception_women_managed: (r) => r.preconceptionWomenManaged ?? undefined,
+      preconception_women_identified: (r) => asNumericRecord(r.preconceptionWomenIdentified),
+      preconception_interventions: (r) => asNumericRecord(r.preconceptionInterventions),
+      preconception_women_managed: (r) => asNumericRecord(r.preconceptionWomenManaged),
       pregnant_women_registered_and_screened: (r) =>
-        r.pregnantWomenRegisteredAndScreened ?? undefined,
-      pregnant_women_identified: (r) => r.pregnantWomenIdentified ?? undefined,
-      pregnant_women_managed: (r) => r.pregnantWomenManaged ?? undefined,
-      high_risk_pregnancy: (r) => r.highRiskPregnancy ?? undefined,
-      delivery_and_outcomes: (r) => r.deliveryAndOutcomes ?? undefined,
-      infants_0_to_24_months: (r) => r.infants0To24Months ?? undefined,
-      postnatal_women: (r) => r.postnatalWomen ?? undefined,
+        asNumericRecord(r.pregnantWomenRegisteredAndScreened),
+      pregnant_women_identified: (r) => asNumericRecord(r.pregnantWomenIdentified),
+      pregnant_women_managed: (r) => asNumericRecord(r.pregnantWomenManaged),
+      high_risk_pregnancy: (r) => asNumericRecord(r.highRiskPregnancy),
+      delivery_and_outcomes: (r) => asNumericRecord(r.deliveryAndOutcomes),
+      infants_0_to_24_months: (r) => asNumericRecord(r.infants0To24Months),
+      postnatal_women: (r) => asNumericRecord(r.postnatalWomen),
     };
 
     const keys: Record<string, readonly string[]> = {
@@ -306,7 +312,7 @@ export class AnalyticsService {
       points: buildTimeSeries(
         buckets.map((b) => ({ periodStart: b.periodStart, rows: b.rows })),
         field,
-        (i) => {
+        (i: number) => {
           if (section !== "pregnant_women_registered_and_screened") return null;
           const b = buckets[i];
           const t = sumFields(b.rows, PREGNANT_WOMEN_REGISTERED_AND_SCREENED_FIELDS as unknown as string[]);
@@ -390,7 +396,7 @@ export class AnalyticsService {
     return {
       metric,
       thresholdZ,
-      points: flags.map((x) => ({
+      points: flags.map((x: AnomalyFlag) => ({
         ...x,
         assessmentId: rows[x.index]?.id,
         facility: rows[x.index]?.facility?.name,
@@ -466,7 +472,7 @@ export class AnalyticsService {
     if (s) {
       const { total_anc_registered, ...rest } = s;
       validationIssues.push(
-        ...validateScreeningVsRegistered(total_anc_registered, rest as Record<string, number>),
+        ...validateScreeningVsRegistered(total_anc_registered, asNumericRecord(rest) ?? {}),
       );
     }
     const pi = r.preconceptionWomenIdentified;
@@ -474,8 +480,8 @@ export class AnalyticsService {
     if (pi && pm) {
       validationIssues.push(
         ...validateManagedVsIdentified(
-          pi as Record<string, number>,
-          pm as Record<string, number>,
+          asNumericRecord(pi) ?? {},
+          asNumericRecord(pm) ?? {},
           "preconception",
         ),
       );
@@ -485,8 +491,8 @@ export class AnalyticsService {
     if (pgi && pgm) {
       validationIssues.push(
         ...validateManagedVsIdentified(
-          pgi as Record<string, number>,
-          pgm as Record<string, number>,
+          asNumericRecord(pgi) ?? {},
+          asNumericRecord(pgm) ?? {},
           "pregnancy",
         ),
       );

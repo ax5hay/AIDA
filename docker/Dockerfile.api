@@ -1,0 +1,33 @@
+# AIDA API — NestJS + Prisma + workspace packages
+FROM node:20-bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json tsconfig.base.json ./
+COPY apps ./apps
+COPY packages ./packages
+COPY docker ./docker
+
+RUN npm install
+
+WORKDIR /app/packages/db
+RUN npx prisma generate
+
+WORKDIR /app
+RUN npm run build -w @aida/db \
+  && npm run build -w @aida/analytics-engine \
+  && npm run build -w @aida/ml-engine \
+  && npm run build -w @aida/ai-engine \
+  && npm run build -w @aida/api
+
+ENV NODE_ENV=production
+ENV API_PORT=4000
+
+RUN chmod +x /app/docker/entrypoint-api.sh
+
+EXPOSE 4000
+
+ENTRYPOINT ["/app/docker/entrypoint-api.sh"]

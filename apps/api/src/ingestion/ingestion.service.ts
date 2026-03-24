@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { validateManagedVsIdentified, validateScreeningVsRegistered } from "@aida/analytics-engine";
+import {
+  validateManagedVsIdentified,
+  validateScreeningVsRegistered,
+  type ValidationIssue,
+} from "@aida/analytics-engine";
 import { PrismaService } from "../prisma/prisma.service";
 import { emptySections } from "./defaults";
 
@@ -56,21 +60,21 @@ export class IngestionService {
       ...validateScreeningVsRegistered(
         total_anc_registered as number,
         screened as Record<string, number>,
-      ).map((i) => i.message),
+      ).map((i: ValidationIssue) => i.message),
     );
     issues.push(
       ...validateManagedVsIdentified(
         pci as Record<string, number>,
         pcm as Record<string, number>,
         "preconception",
-      ).map((i) => i.message),
+      ).map((i: ValidationIssue) => i.message),
     );
     issues.push(
       ...validateManagedVsIdentified(
         pwi as Record<string, number>,
         pwm as Record<string, number>,
         "pregnancy",
-      ).map((i) => i.message),
+      ).map((i: ValidationIssue) => i.message),
     );
     if (issues.length > 0) {
       throw new BadRequestException({ message: "Logical validation failed", issues });

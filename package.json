@@ -5,18 +5,22 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "pnpm@9.14.2",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run db:generate && npm run build:packages && npm run build:apps",
+    "build:packages": "npm run build -w @aida/db -w @aida/analytics-engine -w @aida/ml-engine -w @aida/ai-engine -w @aida/ui",
+    "build:apps": "npm run build -w @aida/api -w @aida/web",
     "dev:api": "npm run dev -w @aida/api",
     "dev:web": "npm run dev -w @aida/web",
-    "db:generate": "cd packages/db && npx prisma generate",
-    "db:push": "cd packages/db && npx prisma db push",
-    "db:migrate": "cd packages/db && npx prisma migrate dev",
-    "db:seed": "cd packages/db && npx tsx prisma/seed.ts",
+    "db:generate": "npx prisma generate --schema packages/db/prisma/schema.prisma",
+    "db:push": "npx prisma db push --schema packages/db/prisma/schema.prisma",
+    "db:migrate": "npx prisma migrate dev --schema packages/db/prisma/schema.prisma",
+    "db:seed": "npx tsx packages/db/prisma/seed.ts",
     "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7"
   }
 }

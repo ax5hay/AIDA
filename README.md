@@ -2,6 +2,42 @@
 
 Monorepo SaaS for **public health decision intelligence** (Community Health Centre assessment data). Data flows **DB → analytics engine → API → UI** — the web app never queries the database directly.
 
+## What to install
+
+### Option A — Full stack in Docker (recommended, one command)
+
+| Install on your computer | Required? |
+|--------------------------|-----------|
+| **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (includes Docker Engine + Compose) | **Yes** |
+
+**You do not need** Node.js, npm, pnpm, PostgreSQL, or any other runtime on your host for this path. The **frontend (Next.js)** and **backend (NestJS)** are built and run **inside Docker images**.
+
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+- **Web:** [http://localhost:3000](http://localhost:3000)  
+- **API:** [http://localhost:4000/v1/metrics/health](http://localhost:4000/v1/metrics/health)  
+
+The **first** `docker compose build` may take **several minutes** while `npm install` runs inside the images. Later builds use layer cache and are faster.
+
+**Useful commands:** `docker compose logs -f` · `docker compose down`
+
+---
+
+### Option B — Develop on the host (no Docker for apps)
+
+| Install | Required? |
+|---------|-----------|
+| **Node.js 20+** ([nodejs.org](https://nodejs.org)) | Yes |
+| **PostgreSQL 14+** (or use `docker compose up -d postgres` only) | Yes |
+| **npm** (comes with Node) | Yes |
+
+Then use `npm install`, `npm run db:*`, `npm run dev:api`, `npm run dev:web` as in [Setup (manual)](#setup-manual) below.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -29,12 +65,7 @@ flowchart LR
 | `apps/api` | NestJS: `ingestion`, `analytics`, `metrics`, `ml`, `ai` modules |
 | `apps/web` | Next.js App Router, TanStack Query, Framer Motion, Recharts |
 
-## Prerequisites
-
-- Node.js 20+
-- PostgreSQL 14+
-
-## Setup
+## Setup (manual)
 
 1. **Install dependencies** (from repo root):
 

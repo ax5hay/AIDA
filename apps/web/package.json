@@ -5,11 +5,11 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -H 0.0.0.0 -p 3000",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aida/ui": "workspace:*",
+    "@aida/ui": "*",
     "@tanstack/react-query": "^5.62.8",
     "framer-motion": "^11.15.0",
     "next": "^15.1.3",

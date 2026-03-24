@@ -1,6 +1,16 @@
+import { config } from "dotenv";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { PrismaClient } from "@prisma/client";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: join(__dirname, "../../../.env") });
+
 const prisma = new PrismaClient();
+
+/** 40 facilities × 50 months = 2000 CHC assessment rows */
+const TARGET_ASSESSMENTS = 2000;
+const MONTHS_SPAN = TARGET_ASSESSMENTS / 40;
 
 function mulberry32(a: number) {
   return function () {
@@ -19,37 +29,103 @@ function min(a: number, b: number) {
   return Math.min(a, b);
 }
 
+/** Indian CHC / block PHC style units — names, districts, states */
+const INDIAN_FACILITIES: ReadonlyArray<{ name: string; district: string; state: string }> = [
+  { name: "CHC Ramnagar", district: "Varanasi", state: "Uttar Pradesh" },
+  { name: "CHC Malkapur", district: "Solapur", state: "Maharashtra" },
+  { name: "CHC Hubli Rural", district: "Dharwad", state: "Karnataka" },
+  { name: "CHC Tirur", district: "Malappuram", state: "Kerala" },
+  { name: "CHC Mannargudi", district: "Tiruvarur", state: "Tamil Nadu" },
+  { name: "CHC Baran", district: "Baran", state: "Rajasthan" },
+  { name: "CHC Sehore", district: "Sehore", state: "Madhya Pradesh" },
+  { name: "CHC Nalbari", district: "Nalbari", state: "Assam" },
+  { name: "CHC Anand", district: "Anand", state: "Gujarat" },
+  { name: "CHC Berhampur", district: "Ganjam", state: "Odisha" },
+  { name: "CHC Krishnanagar", district: "Nadia", state: "West Bengal" },
+  { name: "CHC Motihari", district: "East Champaran", state: "Bihar" },
+  { name: "CHC Rewari", district: "Rewari", state: "Haryana" },
+  { name: "CHC Jagdalpur", district: "Bastar", state: "Chhattisgarh" },
+  { name: "CHC Srikakulam", district: "Srikakulam", state: "Andhra Pradesh" },
+  { name: "CHC Dibrugarh", district: "Dibrugarh", state: "Assam" },
+  { name: "CHC Sangrur", district: "Sangrur", state: "Punjab" },
+  { name: "CHC Shimla Rural", district: "Shimla", state: "Himachal Pradesh" },
+  { name: "CHC Udhampur", district: "Udhampur", state: "Jammu and Kashmir" },
+  { name: "CHC Namchi", district: "Namchi", state: "Sikkim" },
+  { name: "CHC Pasighat", district: "East Siang", state: "Arunachal Pradesh" },
+  { name: "CHC Kolasib", district: "Kolasib", state: "Mizoram" },
+  { name: "CHC Dimapur", district: "Dimapur", state: "Nagaland" },
+  { name: "CHC Agartala Rural", district: "West Tripura", state: "Tripura" },
+  { name: "CHC Imphal West", district: "Imphal West", state: "Manipur" },
+  { name: "CHC Shillong", district: "East Khasi Hills", state: "Meghalaya" },
+  { name: "CHC Aizawl", district: "Aizawl", state: "Mizoram" },
+  { name: "CHC Kohima", district: "Kohima", state: "Nagaland" },
+  { name: "CHC Panaji Rural", district: "North Goa", state: "Goa" },
+  { name: "CHC Ranchi Sadar", district: "Ranchi", state: "Jharkhand" },
+  { name: "CHC Raipur Urban", district: "Raipur", state: "Chhattisgarh" },
+  { name: "CHC Gwalior Rural", district: "Gwalior", state: "Madhya Pradesh" },
+  { name: "CHC Ajmer Block", district: "Ajmer", state: "Rajasthan" },
+  { name: "CHC Mysuru Rural", district: "Mysuru", state: "Karnataka" },
+  { name: "CHC Thiruvananthapuram", district: "Thiruvananthapuram", state: "Kerala" },
+  { name: "CHC Coimbatore North", district: "Coimbatore", state: "Tamil Nadu" },
+  { name: "CHC Nashik Rural", district: "Nashik", state: "Maharashtra" },
+  { name: "CHC Prayagraj", district: "Prayagraj", state: "Uttar Pradesh" },
+  { name: "CHC Patna Rural", district: "Patna", state: "Bihar" },
+  { name: "CHC Howrah", district: "Howrah", state: "West Bengal" },
+];
+
+const OBSERVATIONAL_REMARKS = [
+  "VHND में आयरन-फोलिक एसिड वितरण की पंक्ति ASHA रजिस्टर से मिलान की गई।",
+  "Rapid HIV kit indent जिला कोषागार से भेजा गया; शीत श्रृंखला लॉग अपडेट।",
+  "Hemoglobin testing reagents — Jan Aushadhi stock reconciled for the month.",
+  "PHC-CHO review: ANC high-risk line-list updated on RCH portal.",
+  "आशा द्वारा गृह भेंट में गर्भवती पंजीकरण की सूचना सत्यापित।",
+  "District workshop on PMSMA completed; MOIC submitted attendance sheet.",
+  "Cold chain for vaccines verified; ILR temperature log within range.",
+  "LaQshya checklist audit: labour room preparedness for referral cases.",
+];
+
+const RESPONDENT_REMARKS = [
+  "MOIC: मासिक HMIS प्रविष्टि समय पर पूर्ण की गई।",
+  "Block programme manager: VHND micro-plan shared with ANM cluster.",
+  "Respondent: ASHA supervisors verified line-list against Mamta card uptake.",
+  "CHO: teleconsultation roster for high-risk ANC displayed at help desk.",
+  "Data entry operator: duplicate ANC entries removed after facility audit.",
+  "MOIC: NQAS gap action plan for labour room submitted to district.",
+  "Respondent: Janani Suraksha Yojana reimbursement cases reconciled.",
+  "Block ASHA coordinator: incentive payment list cross-checked with bank advice.",
+];
+
 async function main() {
-  await prisma.chcAssessment.deleteMany();
-  await prisma.facility.deleteMany();
+  await prisma.$transaction(async (tx) => {
+    await tx.chcAssessment.deleteMany({});
+    await tx.facility.deleteMany({});
+  });
+
+  if (INDIAN_FACILITIES.length * MONTHS_SPAN !== TARGET_ASSESSMENTS) {
+    throw new Error(
+      `Seed config mismatch: ${INDIAN_FACILITIES.length} facilities × ${MONTHS_SPAN} months ≠ ${TARGET_ASSESSMENTS}`,
+    );
+  }
 
   const facilities = await Promise.all(
-    [
-      { name: "CHC North Block", district: "North" },
-      { name: "CHC River Valley", district: "North" },
-      { name: "CHC Central", district: "Central" },
-      { name: "CHC Hills", district: "Central" },
-      { name: "CHC South Gate", district: "South" },
-      { name: "CHC Coastal", district: "South" },
-      { name: "CHC East Fields", district: "East" },
-      { name: "CHC West Ridge", district: "West" },
-    ].map((f) =>
+    INDIAN_FACILITIES.map((f) =>
       prisma.facility.create({
-        data: { name: f.name, district: f.district, state: "Demo State" },
+        data: { name: f.name, district: f.district, state: f.state },
       }),
     ),
   );
 
-  const months = 12;
-  const startYear = 2024;
+  const startYear = 2020;
+  const startMonth = 0;
 
-  for (let m = 0; m < months; m++) {
-    const periodStart = new Date(Date.UTC(startYear, m, 1));
-    const periodEnd = new Date(Date.UTC(startYear, m + 1, 0));
+  for (let m = 0; m < MONTHS_SPAN; m++) {
+    const periodStart = new Date(Date.UTC(startYear, startMonth + m, 1));
+    const periodEnd = new Date(Date.UTC(startYear, startMonth + m + 1, 0));
 
     for (let fi = 0; fi < facilities.length; fi++) {
       const facility = facilities[fi];
-      const r = mulberry32(1000 + m * 17 + fi * 31);
+      const idx = m * facilities.length + fi;
+      const r = mulberry32(10_007 + idx * 1_039);
 
       const anc = randInt(r, 90, 240);
       const blood_grouping = min(anc, randInt(r, anc - 25, anc));
@@ -202,14 +278,8 @@ async function main() {
           },
           remarks: {
             create: {
-              observational_remarks:
-                m % 4 === 0
-                  ? "Supply intermittency noted for rapid HIV kits; backup protocol activated."
-                  : "",
-              respondent_remarks:
-                fi === 0 && m === 0
-                  ? "Initial baseline period; training completed for PHQ-2 trimester capture."
-                  : "",
+              observational_remarks: OBSERVATIONAL_REMARKS[idx % OBSERVATIONAL_REMARKS.length]!,
+              respondent_remarks: RESPONDENT_REMARKS[idx % RESPONDENT_REMARKS.length]!,
             },
           },
           documents: {
@@ -220,8 +290,14 @@ async function main() {
     }
   }
 
+  const count = await prisma.chcAssessment.count();
   // eslint-disable-next-line no-console
-  console.log(`Seeded ${facilities.length} facilities × ${months} months`);
+  console.log(
+    `Seeded ${facilities.length} Indian facilities × ${MONTHS_SPAN} months = ${count} CHC assessments (target ${TARGET_ASSESSMENTS}).`,
+  );
+  if (count !== TARGET_ASSESSMENTS) {
+    throw new Error(`Expected ${TARGET_ASSESSMENTS} assessments, got ${count}`);
+  }
 }
 
 main()

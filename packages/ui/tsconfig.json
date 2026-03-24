@@ -3,6 +3,8 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "outDir": "dist",
     "rootDir": "src"
