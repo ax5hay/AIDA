@@ -243,3 +243,78 @@ export type AssessmentDetailResponse = {
   documents: Record<string, string | null> | null;
   validationIssues: ValidationIssue[];
 };
+
+/** `/analytics/intelligence` — extended public health intelligence payload */
+export type FunnelStageMetricDto = {
+  id: string;
+  label: string;
+  count: number;
+  conversionFromFirst: number | null;
+  dropOffFromPrior: number | null;
+  retainedFromPrior: number | null;
+  nonMonotonic: boolean;
+};
+
+export type PipelineBundleDto = {
+  key: string;
+  label: string;
+  stages: FunnelStageMetricDto[];
+  bottleneckIndex: number | null;
+  bottleneckId: string | null;
+};
+
+export type PublicHealthIntelligenceResponse = {
+  meta: { assessmentCount: number; filters: OverviewMeta["filters"]; computedAt: string };
+  pipelines: PipelineBundleDto[];
+  sankey_links: Array<{ pipeline: string; source: string; target: string; value: number }>;
+  gaps: Record<string, unknown>;
+  correlation_engine: Record<string, unknown>;
+  cohorts: Record<string, unknown>;
+  time_series: Record<string, unknown>;
+  distributions: Record<string, unknown>;
+  multivariate: Record<string, unknown>;
+  kpis: Record<string, unknown>;
+  anomalies: Record<string, unknown>;
+  cross_entity: Record<string, unknown>;
+  insights: Record<string, unknown>;
+};
+
+export type AiIntelligenceInsightsResponse = {
+  enabled: boolean;
+  deterministic: unknown;
+  llm: string | null;
+  llmError?: string;
+};
+
+/** `/analytics/decision-support` — decision layer (actions, score, alerts, what-if, quality, benchmarks, story) */
+export type DecisionSupportResponse = {
+  meta: { filters: OverviewMeta["filters"]; computedAt: string; refresh_hint_sec: number };
+  program_health_score: {
+    score: number;
+    breakdown: { coverage: number; outcomes: number; gap_equity: number };
+    notes: string[];
+  };
+  top_actions: Array<{ rank: number; title: string; rationale: string; signal: string }>;
+  alert_center: Array<{
+    id: string;
+    severity: string;
+    title: string;
+    detail: string;
+    source: string;
+  }>;
+  what_if: Array<{
+    id: string;
+    label: string;
+    assumption: string;
+    projected: { hiv_screening_rate: number | null; lbw_rate: number | null; maternal_mortality_rate: number | null };
+  }>;
+  data_quality: {
+    missing_core_sections_pct: number;
+    validation_issue_count: number;
+    suspicious_assessment_flags: number;
+    inconsistent_rows_hint: string;
+  };
+  benchmarking: Record<string, unknown>;
+  story_mode: Array<{ step: number; title: string; narrative: string }>;
+  what_if_disclaimer: string;
+};

@@ -32,6 +32,8 @@ AIDA is built around that workflow:
 
 If that matches how your program thinks about accountability, the rest of this file is just wiring.
 
+A consolidated **feature and capability list** (UI, API, packages) lives in [FEATURES.md](./FEATURES.md).
+
 ---
 
 ## Architecture

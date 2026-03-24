@@ -2,7 +2,15 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { PageShell, InsightCallout } from "@aida/ui";
-import { getAiModels, getAiStatus, getOverview, getPublicConfig, postAiInsights } from "@/lib/api";
+import {
+  getAiModels,
+  getAiStatus,
+  getIntelligence,
+  getOverview,
+  getPublicConfig,
+  postAiInsights,
+  postAiIntelligenceInsights,
+} from "@/lib/api";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { useAiPreferences } from "@/hooks/use-ai-preferences";
@@ -14,6 +22,8 @@ export default function AiPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [intelText, setIntelText] = useState<string | null>(null);
+  const [intelError, setIntelError] = useState<string | null>(null);
 
   const config = useQuery({
     queryKey: ["public-config"],
@@ -45,6 +55,12 @@ export default function AiPage() {
     ...analyticsFilteredQuery,
   });
 
+  const intelligence = useQuery({
+    queryKey: ["intelligence", filtersKey],
+    queryFn: ({ signal }) => getIntelligence(filters, signal),
+    ...analyticsFilteredQuery,
+  });
+
   useEffect(() => {
     const list = models.data?.data ?? [];
     if (list.length === 0) return;
@@ -68,15 +84,50 @@ export default function AiPage() {
     },
   });
 
+  const mIntel = useMutation({
+    mutationFn: () =>
+      postAiIntelligenceInsights(intelligence.data ?? {}, {
+        model: config.data?.lmStudioConfigured ? selectedModel : undefined,
+      }),
+    onSuccess: (d) => {
+      setIntelError(null);
+      if (d.llm) {
+        setIntelText(d.llm);
+        return;
+      }
+      if (d.llmError) {
+        setIntelText(
+          `LLM unavailable (${d.llmError}). The API still returns deterministic insight objects — use Analytics suite or GET /analytics/intelligence.`,
+        );
+        return;
+      }
+      if (!d.enabled) {
+        setIntelText(
+          "Server AI is disabled. Full deterministic intelligence (pipelines, gaps, what/why/next) is available from the Analytics suite without an LLM.",
+        );
+        return;
+      }
+      setIntelText(
+        "LLM returned no text. Expand the Analytics suite public health section for the full JSON, or retry with a different model.",
+      );
+    },
+    onError: (e: Error) => {
+      setIntelError(e.message);
+      setIntelText(null);
+    },
+  });
+
   const serverOn = status.data?.enabled === true;
   const canGenerate =
     hydrated && serverOn && clientAiEnabled && !!overview.data && !m.isPending;
+  const canGenerateIntel =
+    hydrated && serverOn && clientAiEnabled && !!intelligence.data && !mIntel.isPending;
 
   return (
     <PageShell
       title="AI insights"
       eyebrow="Optional GenAI layer"
-      subtitle="Narrative synthesis uses the same filtered overview payload as the dashboard. Counts always come from the API response, not the model."
+      subtitle="Narrative synthesis uses the same filtered snapshots as the dashboard: program overview and/or the full public health intelligence bundle. Counts always come from the API response, not the model."
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 
@@ -148,7 +199,7 @@ export default function AiPage() {
         </div>
       </div>
 
-      <div className="mt-6 flex min-h-[52px] flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mt-6 flex min-h-[52px] flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="button"
           disabled={!canGenerate}
@@ -157,18 +208,34 @@ export default function AiPage() {
         >
           <span className="px-1">Generate narrative from filtered overview</span>
         </button>
+        <button
+          type="button"
+          disabled={!canGenerateIntel}
+          onClick={() => mIntel.mutate()}
+          className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-violet-500/30 bg-violet-950/40 px-5 text-sm font-medium text-violet-100 transition hover:bg-violet-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span className="px-1">Generate narrative from intelligence snapshot</span>
+        </button>
         {m.isPending ? (
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400/30 border-t-cyan-400" />
-            Generating…
+            Overview…
+          </div>
+        ) : null}
+        {mIntel.isPending ? (
+          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-zinc-300">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400" />
+            Intelligence…
           </div>
         ) : null}
       </div>
 
-      {overview.isLoading ? (
-        <p className="mt-6 text-sm text-zinc-500">Loading overview snapshot…</p>
+      {overview.isLoading || intelligence.isLoading ? (
+        <p className="mt-6 text-sm text-zinc-500">Loading overview and intelligence snapshots…</p>
       ) : overview.error ? (
         <p className="mt-6 text-sm text-rose-400">{(overview.error as Error).message}</p>
+      ) : intelligence.error ? (
+        <p className="mt-6 text-sm text-rose-400">{(intelligence.error as Error).message}</p>
       ) : null}
 
       {error ? (
@@ -183,9 +250,20 @@ export default function AiPage() {
             ? "Set AI_INSIGHTS_ENABLED=true and configure LM_STUDIO_BASE_URL or OPENAI_API_KEY on the API host."
             : !clientAiEnabled
               ? "AI generation is turned off in this browser."
-              : "Run generation to produce an executive-style narrative for the current filters."}
+              : "Run overview generation to produce an executive-style narrative for the current filters."}
         </p>
       )}
+
+      {intelError ? (
+        <p className="mt-8 text-sm text-rose-400">{intelError}</p>
+      ) : intelText ? (
+        <div className="mt-8 space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-violet-400/90">Intelligence narrative</p>
+          <pre className="whitespace-pre-wrap rounded-xl border border-violet-500/20 bg-violet-950/20 p-5 text-sm leading-relaxed text-zinc-300">
+            {intelText}
+          </pre>
+        </div>
+      ) : null}
     </PageShell>
   );
 }

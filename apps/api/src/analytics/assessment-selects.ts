@@ -142,3 +142,24 @@ export const CHC_EXPLORER_SELECT = {
 export type ChcAssessmentExplorerRow = Prisma.ChcAssessmentGetPayload<{
   select: typeof CHC_EXPLORER_SELECT;
 }>;
+
+/** Full analytic graph for public health intelligence (pipelines, gaps, cohorts, links) */
+export const CHC_INTELLIGENCE_SELECT = {
+  id: true,
+  periodStart: true,
+  facility: { select: { district: true, state: true, name: true } },
+  preconceptionWomenIdentified: true,
+  preconceptionInterventions: true,
+  preconceptionWomenManaged: true,
+  pregnantWomenRegisteredAndScreened: true,
+  pregnantWomenIdentified: true,
+  pregnantWomenManaged: true,
+  highRiskPregnancy: true,
+  deliveryAndOutcomes: true,
+  infants0To24Months: true,
+  postnatalWomen: true,
+} satisfies Prisma.ChcAssessmentSelect;
+
+export type ChcAssessmentIntelligenceRow = Prisma.ChcAssessmentGetPayload<{
+  select: typeof CHC_INTELLIGENCE_SELECT;
+}>;

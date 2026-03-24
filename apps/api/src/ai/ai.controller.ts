@@ -20,4 +20,10 @@ export class AiController {
   insights(@Body() body: { snapshot?: unknown; model?: string }) {
     return this.ai.insightsFromPayload(body?.snapshot ?? {}, body?.model);
   }
+
+  /** Hybrid: deterministic intelligence block + optional LLM narrative (LM Studio primary when configured) */
+  @Post("intelligence-insights")
+  intelligenceInsights(@Body() body: { snapshot?: unknown; model?: string }) {
+    return this.ai.intelligenceInsights(body?.snapshot ?? {}, body?.model);
+  }
 }

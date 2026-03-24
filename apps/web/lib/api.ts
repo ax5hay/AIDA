@@ -1,6 +1,7 @@
 import type { AnalyticsFilters } from "./query-params";
 import { filtersToSearchParams } from "./query-params";
 import type {
+  AiIntelligenceInsightsResponse,
   AnomaliesResponse,
   AssessmentDetailResponse,
   ClinicalCrossSectionResponse,
@@ -10,6 +11,8 @@ import type {
   FacilityDto,
   OverviewResponse,
   PublicConfigResponse,
+  DecisionSupportResponse,
+  PublicHealthIntelligenceResponse,
   SectionResponse,
 } from "./types";
 
@@ -30,6 +33,16 @@ async function parseJson<T>(res: Response, label: string): Promise<T> {
 export async function getOverview(filters?: AnalyticsFilters, signal?: AbortSignal) {
   const res = await fetch(`${base()}/analytics/overview${q(filters)}`, { signal, cache: "no-store" });
   return parseJson<OverviewResponse>(res, "overview");
+}
+
+export async function getIntelligence(filters?: AnalyticsFilters, signal?: AbortSignal) {
+  const res = await fetch(`${base()}/analytics/intelligence${q(filters)}`, { signal, cache: "no-store" });
+  return parseJson<PublicHealthIntelligenceResponse>(res, "intelligence");
+}
+
+export async function getDecisionSupport(filters?: AnalyticsFilters, signal?: AbortSignal) {
+  const res = await fetch(`${base()}/analytics/decision-support${q(filters)}`, { signal, cache: "no-store" });
+  return parseJson<DecisionSupportResponse>(res, "decision-support");
 }
 
 export async function getSection(section: string, filters?: AnalyticsFilters, signal?: AbortSignal) {
@@ -102,6 +115,19 @@ export async function postAiInsights(
     signal: opts?.signal,
   });
   return parseJson<{ enabled: boolean; text: string | null }>(res, "ai insights");
+}
+
+export async function postAiIntelligenceInsights(
+  snapshot: unknown,
+  opts?: { model?: string; signal?: AbortSignal },
+) {
+  const res = await fetch(`${base()}/ai/intelligence-insights`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ snapshot, model: opts?.model }),
+    signal: opts?.signal,
+  });
+  return parseJson<AiIntelligenceInsightsResponse>(res, "ai intelligence insights");
 }
 
 export async function getAiModels(signal?: AbortSignal) {

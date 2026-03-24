@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { AppNav } from "@/components/app-nav";
+import { DecisionSupportDock } from "@/components/decision-support-dock";
 
 function NavWithSuspense() {
   return (
@@ -24,7 +25,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         }
       >
-        {children}
+        <div className="pb-[calc(11rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]">
+          {children}
+        </div>
+      </Suspense>
+      <Suspense fallback={null}>
+        <DecisionSupportDock />
       </Suspense>
     </>
   );

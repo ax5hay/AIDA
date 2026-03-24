@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { MlService } from "./ml.service";
-import type { ExplorerFilters } from "../analytics/analytics.service";
+import type { ExplorerFilters } from "../analytics/analytics-filters";
 
 @Controller("ml")
 export class MlController {

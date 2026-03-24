@@ -228,7 +228,8 @@ export function HelpDocs({ className }: { className?: string }) {
         </p>
         <p>
           <strong className="text-zinc-300">Caching</strong>: overview responses are cached server-side for a short TTL (~30
-          seconds) to reduce load; filters bust the cache key.
+          seconds) to reduce load; the extended <code className="font-mono text-[12px]">/analytics/intelligence</code>{" "}
+          response uses a separate key and a slightly longer TTL (~60s). Filters bust cache keys.
         </p>
       </section>
 
@@ -253,6 +254,14 @@ export function HelpDocs({ className }: { className?: string }) {
             <code className="font-mono text-[12px]">live_births</code> or{" "}
             <code className="font-mono text-[12px]">maternal_deaths</code>; flags when{" "}
             <code className="font-mono text-[12px]">|z| &gt; 2.5</code>.
+          </li>
+          <li>
+            <strong className="text-zinc-300">Public health intelligence</strong> —{" "}
+            <code className="font-mono text-[12px]">GET /analytics/intelligence</code> adds pipeline funnels (four
+            standardized chains), gap analytics and district severity, extended correlations (Pearson/Spearman, χ², risk
+            ratio), aligned monthly cohorts, time series with moving averages and spike indices, distribution shares,
+            multivariate scatters, combined anomaly methods (z-score, IQR, isolation-style), mother–infant cross-links, and
+            deterministic <em>what / why / next</em> insight blocks. Cached separately from overview (~60s).
           </li>
         </ul>
       </section>

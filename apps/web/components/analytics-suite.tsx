@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@aida/ui";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
+import { PublicHealthIntelligenceLoader } from "@/components/public-health-intelligence";
 
 const CHART_AXIS = { tick: { fill: "#a1a1aa", fontSize: 11 } };
 
@@ -135,7 +136,9 @@ export function AnalyticsSuite({
     })) ?? [];
 
   return (
-    <div className="space-y-14">
+    <div className="min-w-0 space-y-14">
+      <PublicHealthIntelligenceLoader filters={filters} filtersKey={filtersKey} />
+
       <motion.section
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -460,7 +463,7 @@ function ChartCard({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6"
+      className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6"
     >
       <h3 className="text-sm font-medium text-white">{title}</h3>
       {subtitle ? <p className="mt-1 text-xs leading-relaxed text-zinc-500">{subtitle}</p> : null}

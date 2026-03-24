@@ -14,7 +14,7 @@ export const HELP_INTRO = {
   paragraphs: [
     "Each **ChcAssessment** row is one reporting window (typically monthly) for one **Facility**. Count columns are non‑negative integers: they sum women, events, or tests recorded in that window for that facility—unless the field is explicitly a rate computed in the analytics engine.",
     "Optional **section relations** (e.g. `preconceptionWomenIdentified`) may be missing on a row. Analytics treats a missing section as **no contribution** for that section’s sums for that assessment (equivalent to zero counts).",
-    "The **analytics engine** (`@aida/analytics-engine`) aggregates rows that match URL filters (`from`, `to` on `periodStart`, optional `district`, `facilityId`). It sums fields across rows, derives ratios where formulas are fixed in code, and runs logical validation. The **API** (`AnalyticsService`) exposes overview KPIs, per‑section rollups, correlations, district rollups, scatters, explorer listings, and assessment detail.",
+    "The **analytics engine** (`@aida/analytics-engine`) aggregates rows that match URL filters (`from`, `to` on `periodStart`, optional `district`, `facilityId`). It sums fields across rows, derives ratios where formulas are fixed in code, and runs logical validation. The **API** (`AnalyticsService`) exposes overview KPIs, per‑section rollups, correlations, district rollups, scatters, explorer listings, assessment detail, the extended **`/analytics/intelligence`** bundle, and **`/analytics/decision-support`** (prioritized actions, health score, alerts, what‑if, quality, benchmarks, story mode).",
     "**Field names are frozen** (see schema comment). This page documents what each column represents in public‑health terms and where it appears in the product.",
   ],
 };
@@ -269,6 +269,35 @@ export const HELP_DERIVED_METRICS = [
     formula: "Z-score vs cohort mean for live_births or maternal_deaths; flag |z| > 2.5.",
     usedIn: "Program overview anomaly query; points linked to assessmentId and facility name.",
   },
+  {
+    name: "pipelineFunnels",
+    formula:
+      "Four standardized stage chains (preconception, pregnancy, postnatal, infant) with per-stage counts, conversion from first stage, drop vs prior, and bottleneck index (largest relative drop).",
+    usedIn: "GET /analytics/intelligence; Analytics suite public health charts.",
+  },
+  {
+    name: "gapTriple / district severity",
+    formula:
+      "Screening gap: max(0, eligible − observed) with documented numerators; pregnancy treatment gap from identified vs managed sums; district rows combine screening gap rate, treatment gap rate, and LBW rate into a severity score for ranking.",
+    usedIn: "Intelligence payload gaps.*; district heatmap table in Analytics suite.",
+  },
+  {
+    name: "correlation_engine (extended)",
+    formula:
+      "Pearson and Spearman on assessment-level series; larger correlation matrix; χ² and risk ratio for binary anemia×preterm; linear regression points for scatter panels.",
+    usedIn: "GET /analytics/intelligence.",
+  },
+  {
+    name: "time_series intelligence",
+    formula:
+      "Monthly aligned buckets for HIV screening %, LBW rate, MA(3), trend split, seasonal index, z-spike indices on monthly values.",
+    usedIn: "Intelligence payload; ComposedChart in Analytics suite.",
+  },
+  {
+    name: "anomaly bundle",
+    formula: "Z-score (HIV tests, live births), IQR on HIV tests, isolation-style scores on HIV tests — all assessment-indexed.",
+    usedIn: "GET /analytics/intelligence anomalies.*.",
+  },
 ];
 
 export const HELP_VALIDATION = [
@@ -287,12 +316,24 @@ export const HELP_VALIDATION = [
 export const HELP_API_ROUTES = [
   { route: "GET …/analytics/overview", role: "KPIs, funnel, alerts, validation issues (cached ~30s)." },
   { route: "GET …/analytics/section/:section", role: "Totals, fieldMetrics, comparativeDistribution, monthly timeSeries per canonical section key." },
+  { route: "GET …/analytics/intelligence", role: "Public health intelligence: pipelines, gaps, correlations, cohorts, time series, distributions, multivariate, KPI deltas, anomalies (z/IQR/isolation), cross-entity links, deterministic what/why/next insights (cached ~60s)." },
+  { route: "GET …/analytics/decision-support", role: "Decision layer: top 5 actions, program health score 0–100, alert center, illustrative what-if, data quality, benchmarking (half-window + districts), story-mode steps (cached ~45s)." },
   { route: "GET …/analytics/correlations", role: "anemia_vs_bmi + correlation matrix." },
   { route: "GET …/analytics/district-rollup", role: "District aggregates for charts." },
   { route: "GET …/analytics/clinical-cross-section", role: "Scatter source pairs." },
   { route: "GET …/analytics/anomalies?metric=", role: "Z-score flags for live_births or maternal_deaths." },
   { route: "GET …/analytics/explorer", role: "Lightweight listing + document/remarks meta." },
   { route: "GET …/analytics/assessments/:id", role: "Full numeric sections + remarks + documents + validation." },
+  { route: "GET …/facilities", role: "List facilities (id, name, district, state) for filters and UI." },
+  { route: "GET …/facilities/districts", role: "Distinct district strings for filter dropdown." },
+  { route: "POST …/ingestion/assessments", role: "Create or update assessment rows (programmatic ingest)." },
+  { route: "GET …/metrics/health", role: "Liveness probe." },
+  { route: "GET …/metrics/counts", role: "Row counts snapshot for ops dashboards." },
+  { route: "GET …/config", role: "Public config: AI flags, LM Studio hints, API base string for clients." },
+  { route: "GET …/ai/status", role: "Whether server-side AI client is enabled (env-gated)." },
+  { route: "GET …/ai/models", role: "Proxies LM Studio OpenAI-compatible GET /v1/models when LM_STUDIO_BASE_URL is set." },
+  { route: "POST …/ai/insights", role: "LLM narrative from an arbitrary JSON snapshot (typically overview); counts must come from client payload." },
+  { route: "POST …/ai/intelligence-insights", role: "Returns deterministic insights block from payload plus optional LLM text grounded in public health intelligence JSON." },
 ];
 
 /** Keys accepted by `GET /analytics/section/:section` (must match analytics.service pickers). */
@@ -311,7 +352,7 @@ export const HELP_SECTION_ENDPOINT_KEYS = [
 
 export const HELP_PAGE_MAP = [
   { page: "Program overview", path: "/overview", data: "overview KPIs, alerts, validation count, anomalies." },
-  { page: "Analytics suite", path: "/analytics", data: "Overview-derived metrics, district chart, funnel bars, matrix, scatters." },
+  { page: "Analytics suite", path: "/analytics", data: "Public health intelligence (pipelines, gaps, charts), overview-derived metrics, district chart, funnel bars, matrix, scatters." },
   { page: "Preconception", path: "/preconception", data: "Sections: preconception_women_identified, _managed, preconception_interventions." },
   { page: "Pregnancy", path: "/pregnancy", data: "registered_and_screened, identified, managed." },
   { page: "Postnatal", path: "/postnatal", data: "postnatal_women." },
@@ -320,6 +361,6 @@ export const HELP_PAGE_MAP = [
   { page: "High-risk", path: "/high-risk", data: "high_risk_pregnancy." },
   { page: "Correlations", path: "/correlations", data: "correlations endpoint." },
   { page: "Explorer", path: "/explorer", data: "explorer listing; drill to /explorer/[id] for assessment detail." },
-  { page: "AI Insights", path: "/ai", data: "Sends **overview** JSON to LLM when enabled — counts remain API-sourced." },
+  { page: "AI Insights", path: "/ai", data: "Sends **overview** and/or **intelligence** JSON to LLM when enabled — counts remain API-sourced; deterministic blocks always available from /analytics/intelligence." },
   { page: "Settings", path: "/settings", data: "Public config only (not row data)." },
 ];

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AnalyticsService } from "../analytics/analytics.service";
-import type { ExplorerFilters } from "../analytics/analytics.service";
+import type { ExplorerFilters } from "../analytics/analytics-filters";
 
 @Injectable()
 export class MlService {

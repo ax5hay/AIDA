@@ -34,9 +34,13 @@ import {
   CHC_ASSESSMENT_OVERVIEW_SELECT,
   CHC_CORRELATIONS_SELECT,
   CHC_EXPLORER_SELECT,
+  CHC_INTELLIGENCE_SELECT,
   CHC_SECTION_SELECTS,
 } from "./assessment-selects";
+import { buildDecisionSupportBundle } from "./decision-support-aggregator";
+import { buildPublicHealthIntelligence } from "./intelligence-aggregator";
 import { CHC_ASSESSMENT_ANALYTICS_INCLUDE, type ChcAssessmentAnalytics } from "./assessment-include";
+import type { ExplorerFilters } from "./analytics-filters";
 
 /** Prisma nested rows include id/assessmentId; analytics helpers expect numeric field maps. */
 function asNumericRecord(obj: object | null | undefined): Record<string, number> | undefined {
@@ -44,12 +48,7 @@ function asNumericRecord(obj: object | null | undefined): Record<string, number>
   return obj as unknown as Record<string, number>;
 }
 
-export type ExplorerFilters = {
-  from?: string;
-  to?: string;
-  district?: string;
-  facilityId?: string;
-};
+export type { ExplorerFilters } from "./analytics-filters";
 
 @Injectable()
 export class AnalyticsService {
@@ -71,6 +70,74 @@ export class AnalyticsService {
     if (f.facilityId) where.facilityId = f.facilityId;
     if (f.district) where.facility = { is: { district: f.district } };
     return where;
+  }
+
+  async intelligence(f: ExplorerFilters) {
+    const key = this.cacheKey("intelligence", f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_INTELLIGENCE_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
+
+    const payload = buildPublicHealthIntelligence(rows, f);
+    await this.cache.set(key, payload, 60_000);
+    return payload;
+  }
+
+  /** Decision support: recommendations, health score, alerts, what-if, quality, benchmarks, story — same filters as analytics */
+  async decisionSupport(f: ExplorerFilters) {
+    const key = this.cacheKey("decision-support", f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_INTELLIGENCE_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
+
+    const intel = buildPublicHealthIntelligence(rows, f);
+    const validationIssues = rows.flatMap((r) => {
+      const issues: ValidationIssue[] = [];
+      const s = r.pregnantWomenRegisteredAndScreened;
+      if (s) {
+        const { total_anc_registered, ...rest } = s;
+        issues.push(
+          ...validateScreeningVsRegistered(total_anc_registered, asNumericRecord(rest) ?? {}),
+        );
+      }
+      const pi = r.preconceptionWomenIdentified;
+      const pm = r.preconceptionWomenManaged;
+      if (pi && pm) {
+        issues.push(
+          ...validateManagedVsIdentified(
+            asNumericRecord(pi) ?? {},
+            asNumericRecord(pm) ?? {},
+            "preconception",
+          ),
+        );
+      }
+      const pgi = r.pregnantWomenIdentified;
+      const pgm = r.pregnantWomenManaged;
+      if (pgi && pgm) {
+        issues.push(
+          ...validateManagedVsIdentified(
+            asNumericRecord(pgi) ?? {},
+            asNumericRecord(pgm) ?? {},
+            "pregnancy",
+          ),
+        );
+      }
+      return issues;
+    });
+
+    const payload = buildDecisionSupportBundle(rows, intel, validationIssues.length, f);
+    await this.cache.set(key, payload, 45_000);
+    return payload;
   }
 
   async overview(f: ExplorerFilters) {

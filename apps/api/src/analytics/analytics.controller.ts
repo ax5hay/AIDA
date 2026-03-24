@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
-import { AnalyticsService, type ExplorerFilters } from "./analytics.service";
+import type { ExplorerFilters } from "./analytics-filters";
+import { AnalyticsService } from "./analytics.service";
 
 @Controller("analytics")
 export class AnalyticsController {
@@ -53,6 +54,26 @@ export class AnalyticsController {
     @Query("facilityId") facilityId?: string,
   ) {
     return this.analytics.clinicalCrossSection(this.filters(from, to, district, facilityId));
+  }
+
+  @Get("intelligence")
+  intelligence(
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("district") district?: string,
+    @Query("facilityId") facilityId?: string,
+  ) {
+    return this.analytics.intelligence(this.filters(from, to, district, facilityId));
+  }
+
+  @Get("decision-support")
+  decisionSupport(
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("district") district?: string,
+    @Query("facilityId") facilityId?: string,
+  ) {
+    return this.analytics.decisionSupport(this.filters(from, to, district, facilityId));
   }
 
   @Get("correlations")
