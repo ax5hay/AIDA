@@ -1,0 +1,254 @@
+// CHC Assessment — schema is the single source of truth. Field names MUST NOT be renamed.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Facility / reporting unit for rollups and filters
+model Facility {
+  id          String   @id @default(cuid())
+  name        String
+  district    String
+  state       String   @default("")
+  createdAt   DateTime @default(now())
+  assessments ChcAssessment[]
+
+  @@index([district])
+}
+
+/// One assessment row per facility per period (monthly reporting window)
+model ChcAssessment {
+  id          String   @id @default(cuid())
+  facilityId  String
+  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  preconceptionWomenIdentified       PreconceptionWomenIdentified?
+  preconceptionInterventions         PreconceptionInterventions?
+  preconceptionWomenManaged          PreconceptionWomenManaged?
+  pregnantWomenRegisteredAndScreened PregnantWomenRegisteredAndScreened?
+  pregnantWomenIdentified            PregnantWomenIdentified?
+  pregnantWomenManaged               PregnantWomenManaged?
+  highRiskPregnancy                  HighRiskPregnancy?
+  deliveryAndOutcomes                DeliveryAndOutcomes?
+  infants0To24Months                 Infants0To24Months?
+  postnatalWomen                     PostnatalWomen?
+  remarks                            Remarks?
+  documents                          Documents?
+
+  @@index([facilityId])
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@index([facilityId, periodStart])
+}
+
+/// SECTION: PRECONCEPTION_WOMEN_IDENTIFIED
+model PreconceptionWomenIdentified {
+  id            String          @id @default(cuid())
+  assessmentId  String          @unique
+  assessment    ChcAssessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  rti_sti       Int             @default(0)
+  tb            Int             @default(0)
+  epilepsy      Int             @default(0)
+  syphilis      Int             @default(0)
+  hypothyroidism_tsh_gt_5_5 Int   @default(0)
+  hyperthyroidism_tsh_lt_0_4 Int  @default(0)
+  hypertension  Int             @default(0)
+  hypotension   Int             @default(0)
+  prediabetes_hba1c_5_7_to_6_4 Int @default(0)
+  diabetes_hba1c_gte_6_5 Int      @default(0)
+  bmi_lt_16     Int             @default(0)
+  bmi_16_to_18_49 Int           @default(0)
+  bmi_18_5_to_lt_21 Int         @default(0)
+  severe_anemia_hb_lt_8 Int     @default(0)
+  moderate_anemia_hb_8_to_11_99 Int @default(0)
+  depressive_symptoms Int       @default(0)
+}
+
+/// SECTION: PRECONCEPTION_INTERVENTIONS
+model PreconceptionInterventions {
+  id                    String        @id @default(cuid())
+  assessmentId          String        @unique
+  assessment            ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  ifa_given             Int           @default(0)
+  nutrition_counselling Int           @default(0)
+  wash_counselling      Int           @default(0)
+}
+
+/// SECTION: PRECONCEPTION_WOMEN_MANAGED (same fields as PRECONCEPTION_WOMEN_IDENTIFIED)
+model PreconceptionWomenManaged {
+  id            String          @id @default(cuid())
+  assessmentId  String          @unique
+  assessment    ChcAssessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  rti_sti       Int             @default(0)
+  tb            Int             @default(0)
+  epilepsy      Int             @default(0)
+  syphilis      Int             @default(0)
+  hypothyroidism_tsh_gt_5_5 Int   @default(0)
+  hyperthyroidism_tsh_lt_0_4 Int  @default(0)
+  hypertension  Int             @default(0)
+  hypotension   Int             @default(0)
+  prediabetes_hba1c_5_7_to_6_4 Int @default(0)
+  diabetes_hba1c_gte_6_5 Int      @default(0)
+  bmi_lt_16     Int             @default(0)
+  bmi_16_to_18_49 Int           @default(0)
+  bmi_18_5_to_lt_21 Int         @default(0)
+  severe_anemia_hb_lt_8 Int     @default(0)
+  moderate_anemia_hb_8_to_11_99 Int @default(0)
+  depressive_symptoms Int       @default(0)
+}
+
+/// SECTION: PREGNANT_WOMEN_REGISTERED_AND_SCREENED
+model PregnantWomenRegisteredAndScreened {
+  id                              String        @id @default(cuid())
+  assessmentId                    String        @unique
+  assessment                      ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  total_anc_registered            Int           @default(0)
+  blood_grouping                  Int           @default(0)
+  cbc_tested                      Int           @default(0)
+  hiv_tested                      Int           @default(0)
+  syphilis_tested                 Int           @default(0)
+  urine_routine_microscopy        Int           @default(0)
+  thyroid_tsh_tested              Int           @default(0)
+  gdm_ogtt_tested                 Int           @default(0)
+  blood_pressure_checked          Int           @default(0)
+  height_measured_first_trimester Int           @default(0)
+  weight_measured_first_trimester Int           @default(0)
+  weight_measured_all_trimesters  Int           @default(0)
+  phq2_each_trimester             Int           @default(0)
+  hemoglobin_tested_4_times       Int           @default(0)
+}
+
+/// SECTION: PREGNANT_WOMEN_IDENTIFIED
+model PregnantWomenIdentified {
+  id                              String        @id @default(cuid())
+  assessmentId                    String        @unique
+  assessment                      ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  hiv                             Int           @default(0)
+  syphilis                        Int           @default(0)
+  hypothyroidism                  Int           @default(0)
+  hyperthyroidism                 Int           @default(0)
+  hypertension                    Int           @default(0)
+  hypotension                     Int           @default(0)
+  diabetes_mellitus               Int           @default(0)
+  bmi_lt_18_5                     Int           @default(0)
+  bmi_lt_25                       Int           @default(0)
+  inadequate_gestational_weight_gain Int      @default(0)
+  severe_anemia_hb_lt_7           Int           @default(0)
+  moderate_anemia_hb_7_to_9_9     Int           @default(0)
+  depressive_symptoms             Int           @default(0)
+  other_medical_conditions        Int           @default(0)
+}
+
+/// SECTION: PREGNANT_WOMEN_MANAGED
+model PregnantWomenManaged {
+  id                              String        @id @default(cuid())
+  assessmentId                    String        @unique
+  assessment                      ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  hiv                             Int           @default(0)
+  syphilis                        Int           @default(0)
+  hypothyroidism                  Int           @default(0)
+  hyperthyroidism                 Int           @default(0)
+  hypertension                    Int           @default(0)
+  hypotension                     Int           @default(0)
+  diabetes_mellitus               Int           @default(0)
+  bmi_lt_18_5                     Int           @default(0)
+  bmi_lt_25                       Int           @default(0)
+  inadequate_gestational_weight_gain Int      @default(0)
+  severe_anemia_hb_lt_7           Int           @default(0)
+  moderate_anemia_hb_7_to_9_9     Int           @default(0)
+  depressive_symptoms             Int           @default(0)
+  other_medical_conditions        Int           @default(0)
+}
+
+/// SECTION: HIGH_RISK_PREGNANCY
+model HighRiskPregnancy {
+  id                       String        @id @default(cuid())
+  assessmentId             String        @unique
+  assessment               ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  multiple_pregnancy       Int           @default(0)
+  boh_history              Int           @default(0)
+  infections               Int           @default(0)
+  other_medical_conditions Int           @default(0)
+}
+
+/// SECTION: DELIVERY_AND_OUTCOMES
+model DeliveryAndOutcomes {
+  id                              String        @id @default(cuid())
+  assessmentId                    String        @unique
+  assessment                      ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  corticosteroids_given_preterm   Int           @default(0)
+  registered_mothers_delivered    Int           @default(0)
+  institutional_delivery_facility   Int           @default(0)
+  institutional_delivery_other      Int           @default(0)
+  home_deliveries                 Int           @default(0)
+  maternal_deaths                 Int           @default(0)
+  live_births                     Int           @default(0)
+  vlbw_lt_1500g                   Int           @default(0)
+  lbw_lt_2500g                    Int           @default(0)
+  preterm_births_lt_37_weeks      Int           @default(0)
+  early_neonatal_deaths_lt_24hrs  Int           @default(0)
+}
+
+/// SECTION: INFANTS_0_TO_24_MONTHS
+model Infants0To24Months {
+  id                                    String        @id @default(cuid())
+  assessmentId                          String        @unique
+  assessment                            ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  ebf_0_6_months                        Int           @default(0)
+  lbw_vlbw_iron_0_6_months              Int           @default(0)
+  vitamin_d_0_6_months                  Int           @default(0)
+  preterm_calcium_vitd                  Int           @default(0)
+  ifa_6_24_months                       Int           @default(0)
+  inadequate_weight_gain_6_12_months    Int           @default(0)
+  inadequate_weight_gain_12_24_months    Int           @default(0)
+  adequate_weight_gain_0_24_months      Int           @default(0)
+  wash_counselling_parents              Int           @default(0)
+  fully_immunized_12_23_months          Int           @default(0)
+}
+
+/// SECTION: POSTNATAL_WOMEN
+model PostnatalWomen {
+  id                        String        @id @default(cuid())
+  assessmentId              String        @unique
+  assessment                ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  newborns_screened_rbsk    Int           @default(0)
+  postpartum_checkup_48h_to_14d Int       @default(0)
+  hbnc_visits               Int           @default(0)
+  nutrition_supplements     Int           @default(0)
+  depression_screened       Int           @default(0)
+  psychosocial_support      Int           @default(0)
+  wash_counselling          Int           @default(0)
+  ifa_given                 Int           @default(0)
+  nutrition_counselling     Int           @default(0)
+  kmc_provided              Int           @default(0)
+}
+
+/// SECTION: REMARKS (TEXT fields as specified)
+model Remarks {
+  id                      String        @id @default(cuid())
+  assessmentId            String        @unique
+  assessment              ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  observational_remarks   String        @default("")
+  respondent_remarks      String        @default("")
+}
+
+/// SECTION: DOCUMENTS (FILE — stored as object key / URL string)
+model Documents {
+  id         String        @id @default(cuid())
+  assessmentId String      @unique
+  assessment ChcAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  document_1 String?
+  document_2 String?
+  document_3 String?
+  document_4 String?
+  document_5 String?
+  document_6 String?
+}

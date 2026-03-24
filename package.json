@@ -1,0 +1,22 @@
+{
+  "name": "aida-chc-intelligence",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "pnpm@9.14.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:api": "npm run dev -w @aida/api",
+    "dev:web": "npm run dev -w @aida/web",
+    "db:generate": "cd packages/db && npx prisma generate",
+    "db:push": "cd packages/db && npx prisma db push",
+    "db:migrate": "cd packages/db && npx prisma migrate dev",
+    "db:seed": "cd packages/db && npx tsx prisma/seed.ts",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
