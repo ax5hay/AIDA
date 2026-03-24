@@ -182,10 +182,12 @@ Full column-level documentation lives in-app at **`/help`**.
 
 ## Performance
 
-| Behavior | Detail |
-|----------|--------|
-| Overview cache | Responses for `GET …/analytics/overview` are cached per filter key for about **30 seconds** to cut repeated aggregation cost. |
-| At very large row counts | Consider pushing heavy sums into SQL or materialized views; keep derived definitions in the analytics engine so the semantics stay centralized. |
+| Layer | What we do |
+|-------|----------------|
+| **API** | `gzip` on JSON responses (threshold 1KB). In-memory cache (~**30s** per filter key) on overview, section, correlations, district rollup, clinical cross-section. |
+| **Queries** | Hot paths use **narrow Prisma `select`s** (one clinical section per request where possible; overview omits remarks/documents; correlations pull only columns needed for Pearson series). |
+| **Web** | TanStack Query: **25s stale time**, no refetch on window focus for analytics; **`keepPreviousData`** when filters change so charts do not blank; **code-split** analytics suite (Recharts loads with that route). **`optimizePackageImports`** for `recharts` and `framer-motion`. Facilities/districts lists cached **30 minutes** client-side. |
+| **At huge row counts** | Next step is **SQL aggregations** or **materialized views** fed by the same field definitions—don’t duplicate rate math in raw SQL without the analytics engine as spec. Use **connection pooling** in `DATABASE_URL` in production. |
 
 ---
 

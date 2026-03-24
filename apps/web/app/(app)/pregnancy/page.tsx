@@ -8,6 +8,7 @@ import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { FieldMetricGrid } from "@/components/field-metric-grid";
 import { SectionLineChart } from "@/components/section-chart";
 import { ComparativeDistribution } from "@/components/comparative-distribution";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function PregnancyPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -15,14 +16,17 @@ export default function PregnancyPage() {
   const reg = useQuery({
     queryKey: ["section", "pregnant_women_registered_and_screened", filtersKey],
     queryFn: ({ signal }) => getSection("pregnant_women_registered_and_screened", filters, signal),
+    ...analyticsFilteredQuery,
   });
   const id = useQuery({
     queryKey: ["section", "pregnant_women_identified", filtersKey],
     queryFn: ({ signal }) => getSection("pregnant_women_identified", filters, signal),
+    ...analyticsFilteredQuery,
   });
   const man = useQuery({
     queryKey: ["section", "pregnant_women_managed", filtersKey],
     queryFn: ({ signal }) => getSection("pregnant_women_managed", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   const loading = reg.isLoading || id.isLoading || man.isLoading;

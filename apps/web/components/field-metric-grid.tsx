@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@aida/ui";
 
-export function FieldMetricGrid({
+export const FieldMetricGrid = memo(function FieldMetricGrid({
   rows,
 }: {
   rows: Array<{
@@ -46,4 +47,4 @@ export function FieldMetricGrid({
       ))}
     </div>
   );
-}
+});

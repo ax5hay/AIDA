@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function ExplorerPage() {
   const searchParams = useSearchParams();
@@ -18,6 +19,7 @@ export default function ExplorerPage() {
   const q = useQuery({
     queryKey: ["explorer", filtersKey],
     queryFn: ({ signal }) => getExplorer(filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   return (

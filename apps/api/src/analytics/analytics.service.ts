@@ -30,9 +30,13 @@ import {
 import { correlationMatrix, detectAnomalies, type AnomalyFlag } from "@aida/ml-engine";
 import { PrismaService } from "../prisma/prisma.service";
 import {
-  CHC_ASSESSMENT_ANALYTICS_INCLUDE,
-  type ChcAssessmentAnalytics,
-} from "./assessment-include";
+  CHC_ANOMALIES_SELECT,
+  CHC_ASSESSMENT_OVERVIEW_SELECT,
+  CHC_CORRELATIONS_SELECT,
+  CHC_EXPLORER_SELECT,
+  CHC_SECTION_SELECTS,
+} from "./assessment-selects";
+import { CHC_ASSESSMENT_ANALYTICS_INCLUDE, type ChcAssessmentAnalytics } from "./assessment-include";
 
 /** Prisma nested rows include id/assessmentId; analytics helpers expect numeric field maps. */
 function asNumericRecord(obj: object | null | undefined): Record<string, number> | undefined {
@@ -69,20 +73,16 @@ export class AnalyticsService {
     return where;
   }
 
-  async loadAssessments(f: ExplorerFilters): Promise<ChcAssessmentAnalytics[]> {
-    return this.prisma.chcAssessment.findMany({
-      where: this.whereClause(f),
-      include: CHC_ASSESSMENT_ANALYTICS_INCLUDE,
-      orderBy: { periodStart: "asc" },
-    });
-  }
-
   async overview(f: ExplorerFilters) {
     const key = this.cacheKey("overview", f);
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.loadAssessments(f);
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_ASSESSMENT_OVERVIEW_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
 
     const preIdRows = rows
       .map((r) => r.preconceptionWomenIdentified)
@@ -258,7 +258,20 @@ export class AnalyticsService {
   }
 
   async section(section: string, f: ExplorerFilters) {
-    const rows = await this.loadAssessments(f);
+    const key = this.cacheKey(`section:${section}`, f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
+    const select = CHC_SECTION_SELECTS[section];
+    if (!select) {
+      throw new NotFoundException(`Unknown section: ${section}`);
+    }
+
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select,
+      orderBy: { periodStart: "asc" },
+    });
 
     const pickers: Record<
       string,
@@ -296,7 +309,9 @@ export class AnalyticsService {
       throw new NotFoundException(`Unknown section: ${section}`);
     }
 
-    const flat = rows.map((r) => pick(r)).filter((x): x is Record<string, number> => x !== null && x !== undefined);
+    const flat = rows
+      .map((r) => pick(r as ChcAssessmentAnalytics))
+      .filter((x): x is Record<string, number> => x !== null && x !== undefined);
     const totals = sumFields(flat, fieldList as unknown as string[]);
     const denom =
       section === "pregnant_women_registered_and_screened"
@@ -306,7 +321,7 @@ export class AnalyticsService {
     const metrics = fieldMetrics(totals as Record<string, number>, fieldList as unknown as string[], denom);
     const distribution = distributionShares(totals as Record<string, number>, fieldList as unknown as string[]);
 
-    const buckets = this.monthBuckets(rows, (r) => pick(r) ?? null);
+    const buckets = this.monthBuckets(rows, (r) => pick(r as ChcAssessmentAnalytics) ?? null);
     const timeSeries = (fieldList as readonly string[]).map((field) => ({
       field,
       points: buildTimeSeries(
@@ -323,17 +338,27 @@ export class AnalyticsService {
 
     const comparativeDistribution = distribution;
 
-    return {
+    const payload = {
       section,
       totals,
       fieldMetrics: metrics,
       comparativeDistribution,
       timeSeries,
     };
+    await this.cache.set(key, payload, 30_000);
+    return payload;
   }
 
   async correlations(f: ExplorerFilters) {
-    const rows = await this.loadAssessments(f);
+    const key = this.cacheKey("correlations", f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_CORRELATIONS_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
     const anemiaPre = rows.map((r) => {
       const p = r.preconceptionWomenIdentified;
       if (!p) return 0;
@@ -355,7 +380,7 @@ export class AnalyticsService {
       return p.bmi_lt_18_5 + p.bmi_lt_25;
     });
 
-    return {
+    const payload = {
       anemia_vs_bmi: {
         preconception: {
           r: correlationCoefficient(anemiaPre, bmiPre),
@@ -382,10 +407,16 @@ export class AnalyticsService {
         live_births: rows.map((r) => r.deliveryAndOutcomes?.live_births ?? 0),
       }),
     };
+    await this.cache.set(key, payload, 30_000);
+    return payload;
   }
 
   async anomalies(metric: "live_births" | "maternal_deaths", f: ExplorerFilters) {
-    const rows = await this.loadAssessments(f);
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_ANOMALIES_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
     const values = rows.map((r) => {
       const d = r.deliveryAndOutcomes;
       if (!d) return 0;
@@ -405,7 +436,11 @@ export class AnalyticsService {
   }
 
   async explorer(f: ExplorerFilters) {
-    const rows = await this.loadAssessments(f);
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: CHC_EXPLORER_SELECT,
+      orderBy: { periodStart: "asc" },
+    });
     return {
       meta: {
         totalCount: rows.length,
@@ -543,6 +578,10 @@ export class AnalyticsService {
 
   /** Aggregates assessment rows by facility district (exploratory regional comparison). */
   async districtRollup(f: ExplorerFilters) {
+    const key = this.cacheKey("district-rollup", f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
     const rows = await this.prisma.chcAssessment.findMany({
       where: this.whereClause(f),
       select: {
@@ -601,7 +640,9 @@ export class AnalyticsService {
       cur.hemoglobin_4x_total += p?.hemoglobin_tested_4_times ?? 0;
       map.set(d, cur);
     }
-    return [...map.values()].sort((a, b) => b.assessments - a.assessments);
+    const out = [...map.values()].sort((a, b) => b.assessments - a.assessments);
+    await this.cache.set(key, out, 30_000);
+    return out;
   }
 
   /**
@@ -609,6 +650,10 @@ export class AnalyticsService {
    * (or clearly paired sections), so comparisons are interpretable.
    */
   async clinicalCrossSection(f: ExplorerFilters) {
+    const key = this.cacheKey("clinical-cross-section", f);
+    const hit = await this.cache.get(key);
+    if (hit) return hit;
+
     const rows = await this.prisma.chcAssessment.findMany({
       where: this.whereClause(f),
       select: {
@@ -693,11 +738,13 @@ export class AnalyticsService {
       }
     }
 
-    return {
+    const payload = {
       ancHgb,
       ancHiv,
       pregAnemiaVsLive,
       preconceptionAnemiaIdVsManaged,
     };
+    await this.cache.set(key, payload, 30_000);
+    return payload;
   }
 }

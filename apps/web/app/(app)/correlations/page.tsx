@@ -5,6 +5,7 @@ import { PageShell } from "@aida/ui";
 import { getCorrelations } from "@/lib/api";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function CorrelationsPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -12,6 +13,7 @@ export default function CorrelationsPage() {
   const q = useQuery({
     queryKey: ["correlations", filtersKey],
     queryFn: ({ signal }) => getCorrelations(filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   const data = q.data;

@@ -8,6 +8,7 @@ import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { FieldMetricGrid } from "@/components/field-metric-grid";
 import { SectionLineChart } from "@/components/section-chart";
 import { ComparativeDistribution } from "@/components/comparative-distribution";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function HighRiskPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -15,6 +16,7 @@ export default function HighRiskPage() {
   const q = useQuery({
     queryKey: ["section", "high_risk_pregnancy", filtersKey],
     queryFn: ({ signal }) => getSection("high_risk_pregnancy", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   return (

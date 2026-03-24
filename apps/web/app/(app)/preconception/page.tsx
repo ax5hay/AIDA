@@ -8,6 +8,7 @@ import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { FieldMetricGrid } from "@/components/field-metric-grid";
 import { SectionLineChart } from "@/components/section-chart";
 import { ComparativeDistribution } from "@/components/comparative-distribution";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function PreconceptionPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -15,14 +16,17 @@ export default function PreconceptionPage() {
   const identified = useQuery({
     queryKey: ["section", "preconception_women_identified", filtersKey],
     queryFn: ({ signal }) => getSection("preconception_women_identified", filters, signal),
+    ...analyticsFilteredQuery,
   });
   const managed = useQuery({
     queryKey: ["section", "preconception_women_managed", filtersKey],
     queryFn: ({ signal }) => getSection("preconception_women_managed", filters, signal),
+    ...analyticsFilteredQuery,
   });
   const interventions = useQuery({
     queryKey: ["section", "preconception_interventions", filtersKey],
     queryFn: ({ signal }) => getSection("preconception_interventions", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   const loading = identified.isLoading || managed.isLoading || interventions.isLoading;

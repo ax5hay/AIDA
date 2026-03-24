@@ -1,9 +1,14 @@
 "use client";
 
+import { memo } from "react";
 import type { ComparativeSlice } from "@/lib/types";
 import { motion } from "framer-motion";
 
-export function ComparativeDistribution({ slices }: { slices: ComparativeSlice[] }) {
+export const ComparativeDistribution = memo(function ComparativeDistribution({
+  slices,
+}: {
+  slices: ComparativeSlice[];
+}) {
   return (
     <div className="grid gap-2 md:grid-cols-2">
       {slices.map((s, i) => (
@@ -33,4 +38,4 @@ export function ComparativeDistribution({ slices }: { slices: ComparativeSlice[]
       ))}
     </div>
   );
-}
+});

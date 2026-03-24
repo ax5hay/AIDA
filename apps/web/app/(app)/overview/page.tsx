@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function OverviewPage() {
   const searchParams = useSearchParams();
@@ -18,11 +19,13 @@ export default function OverviewPage() {
   const q = useQuery({
     queryKey: ["overview", filtersKey],
     queryFn: ({ signal }) => getOverview(filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   const anomalies = useQuery({
     queryKey: ["anomalies", "live_births", filtersKey],
     queryFn: ({ signal }) => getAnomalies("live_births", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   if (q.isLoading) {

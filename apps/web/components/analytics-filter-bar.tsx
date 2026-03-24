@@ -15,8 +15,18 @@ export function AnalyticsFilterBar({
   onChange: (patch: Partial<AnalyticsFilters>) => void;
   onClear: () => void;
 }) {
-  const facilitiesQ = useQuery({ queryKey: ["facilities"], queryFn: ({ signal }) => getFacilities(signal) });
-  const districtsQ = useQuery({ queryKey: ["districts"], queryFn: ({ signal }) => getDistricts(signal) });
+  const facilitiesQ = useQuery({
+    queryKey: ["facilities"],
+    queryFn: ({ signal }) => getFacilities(signal),
+    staleTime: 30 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+  const districtsQ = useQuery({
+    queryKey: ["districts"],
+    queryFn: ({ signal }) => getDistricts(signal),
+    staleTime: 30 * 60_000,
+    gcTime: 60 * 60_000,
+  });
 
   const hasActive = !!(filters.from || filters.to || filters.district || filters.facilityId);
 

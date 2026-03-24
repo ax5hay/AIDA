@@ -8,6 +8,7 @@ import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { useAiPreferences } from "@/hooks/use-ai-preferences";
 import { useEffect, useState } from "react";
 import { cn } from "@aida/ui";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function AiPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -41,6 +42,7 @@ export default function AiPage() {
   const overview = useQuery({
     queryKey: ["overview", filtersKey],
     queryFn: ({ signal }) => getOverview(filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   useEffect(() => {

@@ -11,6 +11,7 @@ import { ComparativeDistribution } from "@/components/comparative-distribution";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function OutcomesPage() {
   const searchParams = useSearchParams();
@@ -20,11 +21,13 @@ export default function OutcomesPage() {
   const q = useQuery({
     queryKey: ["section", "delivery_and_outcomes", filtersKey],
     queryFn: ({ signal }) => getSection("delivery_and_outcomes", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   const mat = useQuery({
     queryKey: ["anomalies", "maternal_deaths", filtersKey],
     queryFn: ({ signal }) => getAnomalies("maternal_deaths", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   return (

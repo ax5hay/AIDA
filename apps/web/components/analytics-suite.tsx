@@ -24,6 +24,7 @@ import {
   getOverview,
 } from "@/lib/api";
 import { cn } from "@aida/ui";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 const CHART_AXIS = { tick: { fill: "#a1a1aa", fontSize: 11 } };
 
@@ -56,18 +57,22 @@ export function AnalyticsSuite({
   const overview = useQuery({
     queryKey: ["overview", filtersKey],
     queryFn: ({ signal }) => getOverview(filters, signal),
+    ...analyticsFilteredQuery,
   });
   const cross = useQuery({
     queryKey: ["clinical-cross-section", filtersKey],
     queryFn: ({ signal }) => getClinicalCrossSection(filters, signal),
+    ...analyticsFilteredQuery,
   });
   const corr = useQuery({
     queryKey: ["correlations", filtersKey],
     queryFn: ({ signal }) => getCorrelations(filters, signal),
+    ...analyticsFilteredQuery,
   });
   const rollup = useQuery({
     queryKey: ["district-rollup", filtersKey],
     queryFn: ({ signal }) => getDistrictRollup(filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   const d = overview.data;

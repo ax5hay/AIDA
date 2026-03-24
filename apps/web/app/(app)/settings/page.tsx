@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const q = useQuery({
     queryKey: ["public-config"],
     queryFn: ({ signal }) => getPublicConfig(signal),
+    staleTime: 120_000,
   });
 
   const publicUrl =

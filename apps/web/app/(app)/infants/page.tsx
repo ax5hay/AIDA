@@ -8,6 +8,7 @@ import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { FieldMetricGrid } from "@/components/field-metric-grid";
 import { SectionLineChart } from "@/components/section-chart";
 import { ComparativeDistribution } from "@/components/comparative-distribution";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function InfantsPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -15,6 +16,7 @@ export default function InfantsPage() {
   const q = useQuery({
     queryKey: ["section", "infants_0_to_24_months", filtersKey],
     queryFn: ({ signal }) => getSection("infants_0_to_24_months", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   return (

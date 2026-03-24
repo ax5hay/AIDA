@@ -8,6 +8,7 @@ import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { FieldMetricGrid } from "@/components/field-metric-grid";
 import { SectionLineChart } from "@/components/section-chart";
 import { ComparativeDistribution } from "@/components/comparative-distribution";
+import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function PostnatalPage() {
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
@@ -15,6 +16,7 @@ export default function PostnatalPage() {
   const q = useQuery({
     queryKey: ["section", "postnatal_women", filtersKey],
     queryFn: ({ signal }) => getSection("postnatal_women", filters, signal),
+    ...analyticsFilteredQuery,
   });
 
   return (
