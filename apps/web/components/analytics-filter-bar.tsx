@@ -30,7 +30,7 @@ export function AnalyticsFilterBar({
         From
         <input
           type="date"
-          className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200"
+          className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-base text-zinc-200 sm:min-h-0 sm:text-sm"
           value={filters.from ?? ""}
           onChange={(e) => onChange({ from: e.target.value || undefined })}
         />
@@ -39,7 +39,7 @@ export function AnalyticsFilterBar({
         To
         <input
           type="date"
-          className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200"
+          className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-base text-zinc-200 sm:min-h-0 sm:text-sm"
           value={filters.to ?? ""}
           onChange={(e) => onChange({ to: e.target.value || undefined })}
         />
@@ -47,7 +47,7 @@ export function AnalyticsFilterBar({
       <label className="flex min-w-[160px] flex-1 flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
         District
         <select
-          className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200"
+          className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-base text-zinc-200 sm:min-h-0 sm:text-sm"
           value={filters.district ?? ""}
           onChange={(e) =>
             onChange({
@@ -67,7 +67,7 @@ export function AnalyticsFilterBar({
       <label className="flex min-w-[200px] flex-[2] flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
         Facility
         <select
-          className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200"
+          className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-base text-zinc-200 sm:min-h-0 sm:text-sm"
           value={filters.facilityId ?? ""}
           onChange={(e) => onChange({ facilityId: e.target.value || undefined })}
         >
@@ -87,7 +87,7 @@ export function AnalyticsFilterBar({
           onClick={onClear}
           disabled={!hasActive}
           className={cn(
-            "rounded-lg px-4 py-2 text-sm font-medium transition",
+            "min-h-[44px] rounded-lg px-4 py-2 text-sm font-medium transition sm:min-h-0",
             hasActive
               ? "bg-white/10 text-white hover:bg-white/15"
               : "cursor-not-allowed bg-white/5 text-zinc-600",

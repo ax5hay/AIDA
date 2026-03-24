@@ -11,7 +11,7 @@ import type {
   SectionResponse,
 } from "./types";
 
-const base = () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/v1";
+const base = () => process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 function q(filters?: AnalyticsFilters): string {
   return filtersToSearchParams(filters ?? {});

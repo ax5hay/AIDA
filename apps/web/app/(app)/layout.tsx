@@ -17,7 +17,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Suspense
         fallback={
           <div className="min-h-[60vh] bg-[#07080c]">
-            <div className="mx-auto max-w-[1400px] px-6 pt-12">
+            <div className="mx-auto max-w-[1400px] px-4 pt-8 sm:px-6 sm:pt-12">
               <div className="h-10 w-48 animate-pulse rounded-lg bg-white/10" />
               <div className="mt-8 h-32 animate-pulse rounded-xl bg-white/5" />
             </div>

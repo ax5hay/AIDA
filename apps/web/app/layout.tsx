@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -20,10 +20,17 @@ export const metadata: Metadata = {
   description: "Public health decision intelligence for CHC maternal and child health programs.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#07080c",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${jetbrains.variable}`}>
-      <body className="font-sans">
+      <body className="font-sans touch-manipulation overflow-x-hidden">
         <Providers>{children}</Providers>
       </body>
     </html>

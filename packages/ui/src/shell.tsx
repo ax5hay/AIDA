@@ -20,20 +20,20 @@ export function PageShell({
   return (
     <div className="min-h-screen bg-[#07080c] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(56,189,248,0.08),transparent_55%),radial-gradient(ellipse_at_bottom,_rgba(99,102,241,0.06),transparent_50%)]" />
-      <div className="relative mx-auto max-w-[1400px] px-6 pb-24 pt-12">
+      <div className="relative mx-auto max-w-[1400px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-8 sm:px-6 sm:pt-12 md:pb-24">
         <motion.header
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-12 flex flex-col gap-4 border-b border-white/10 pb-10 md:flex-row md:items-end md:justify-between"
+          className="mb-8 flex flex-col gap-4 border-b border-white/10 pb-8 sm:mb-12 sm:pb-10 md:flex-row md:items-end md:justify-between"
         >
-          <div>
+          <div className="min-w-0">
             {eyebrow ? (
               <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-cyan-400/90">
                 {eyebrow}
               </p>
             ) : null}
-            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">{title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl md:text-4xl">{title}</h1>
             {subtitle ? (
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">{subtitle}</p>
             ) : null}

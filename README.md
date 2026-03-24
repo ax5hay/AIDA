@@ -108,6 +108,42 @@ flowchart LR
 
 Set `NEXT_PUBLIC_API_URL` (e.g. `http://localhost:4000/v1`) if the API is not on the default origin.
 
+## Public HTTPS URL (ngrok)
+
+Use [ngrok](https://ngrok.com/) when you need a temporary public URL for the app (e.g. testing on a phone). Install the [ngrok agent](https://ngrok.com/download), sign in, and add your authtoken once.
+
+Important: the command is `ngrok` (not `ngrock`).
+
+### Recommended (free-plan friendly): one tunnel
+
+This repo is configured so the web app can proxy API requests through Next.js:
+
+- Browser calls `NEXT_PUBLIC_API_URL=/api/v1`
+- Next.js rewrites `/api/*` to `http://localhost:4000/*`
+
+So a single web tunnel is enough.
+
+1. Start API and web locally:
+
+   ```bash
+   npm run dev:api
+   npm run dev:web
+   ```
+
+2. Start ngrok for the web port:
+
+   ```bash
+   ngrok http 3000
+   ```
+
+3. Copy the full HTTPS forwarding URL (must end with `.ngrok-free.app`) and open it on iPhone Safari.
+
+4. Set CORS origin for API:
+   - In `.env`, set `WEB_ORIGIN` to the exact ngrok HTTPS web URL.
+   - Restart `npm run dev:api` after changing `.env`.
+
+If Safari says “cannot open page”, the most common cause is an incomplete/typo URL. Verify the exact forwarding URL at `http://127.0.0.1:4040`.
+
 ## Optional AI
 
 The product works **without** any LLM. To enable narrative insights:

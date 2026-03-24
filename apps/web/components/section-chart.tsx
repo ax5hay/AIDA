@@ -80,9 +80,11 @@ export function SectionLineChart({
           </button>
         ) : null}
       </div>
-      <div className="h-72 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={merged} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+      <div className="h-56 w-full min-w-0 sm:h-72">
+        <div className="h-full w-full overflow-x-auto">
+          <div className="h-full min-w-[min(100%,520px)]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={merged} margin={{ top: 8, right: 4, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
             <XAxis
               dataKey="period"
@@ -116,8 +118,10 @@ export function SectionLineChart({
                 isAnimationActive={false}
               />
             ))}
-          </LineChart>
-        </ResponsiveContainer>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
     </div>
   );
