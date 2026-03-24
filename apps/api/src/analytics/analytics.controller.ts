@@ -35,6 +35,26 @@ export class AnalyticsController {
     return this.analytics.section(section, this.filters(from, to, district, facilityId));
   }
 
+  @Get("district-rollup")
+  districtRollup(
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("district") district?: string,
+    @Query("facilityId") facilityId?: string,
+  ) {
+    return this.analytics.districtRollup(this.filters(from, to, district, facilityId));
+  }
+
+  @Get("clinical-cross-section")
+  clinicalCrossSection(
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("district") district?: string,
+    @Query("facilityId") facilityId?: string,
+  ) {
+    return this.analytics.clinicalCrossSection(this.filters(from, to, district, facilityId));
+  }
+
   @Get("correlations")
   correlations(
     @Query("from") from?: string,

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@aida/ui";
+import { AiximiusMark, cn } from "@aida/ui";
 
 const links = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Home" },
+  { href: "/overview", label: "Overview" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/preconception", label: "Preconception" },
   { href: "/pregnancy", label: "Pregnancy" },
   { href: "/postnatal", label: "Postnatal" },
@@ -18,18 +20,26 @@ const links = [
   { href: "/explorer", label: "Explorer" },
   { href: "/ai", label: "AI Insights" },
   { href: "/settings", label: "Settings" },
+  { href: "/help", label: "Help" },
 ];
 
 const mobileTabs: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/", label: "Overview" },
-  { href: "/preconception", label: "Preconception" },
-  { href: "/pregnancy", label: "Pregnancy" },
+  { href: "/", label: "Home" },
+  { href: "/overview", label: "Overview" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/explorer", label: "Explorer" },
 ];
 
 function hrefWithQuery(href: string, search: string) {
   if (!search) return href;
   return `${href}?${search}`;
+}
+
+function isNavActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (href === "/") return pathname === "/";
+  if (href === "/explorer") return pathname.startsWith("/explorer");
+  return pathname === href;
 }
 
 function NavLinks({
@@ -46,7 +56,7 @@ function NavLinks({
   return (
     <>
       {links.map((l) => {
-        const active = pathname === l.href;
+        const active = isNavActive(pathname, l.href);
         const to = hrefWithQuery(l.href, qs);
         return (
           <Link
@@ -56,7 +66,7 @@ function NavLinks({
             className={cn(
               "relative rounded-lg font-medium transition-colors",
               variant === "bar" &&
-                "shrink-0 px-2.5 py-2.5 text-xs md:min-h-0 md:py-1.5 min-h-[44px] flex items-center",
+                "flex min-h-[44px] shrink-0 items-center px-2.5 py-2.5 text-xs md:min-h-0 md:py-1.5",
               variant === "drawer" &&
                 "flex min-h-[48px] items-center border-b border-white/5 px-4 py-3.5 text-sm",
               active ? "text-white" : "text-zinc-500 hover:text-zinc-300",
@@ -103,12 +113,19 @@ export function AppNav() {
     <>
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#07080c]/90 backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-[1400px] items-center gap-2 px-4 py-2 md:px-6 md:py-3">
-          <span className="mr-2 shrink-0 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400/90">
+          <Link
+            href={hrefWithQuery("/overview", qs)}
+            className="mr-2 shrink-0 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400/90"
+          >
             AIDA
-          </span>
+          </Link>
 
           <div className="hidden min-h-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
             <NavLinks pathname={pathname} qs={qs} variant="bar" />
+          </div>
+
+          <div className="hidden shrink-0 items-center md:flex">
+            <AiximiusMark />
           </div>
 
           <button
@@ -126,7 +143,7 @@ export function AppNav() {
       <nav className="fixed inset-x-0 bottom-0 z-[70] border-t border-white/10 bg-[#07080c]/95 backdrop-blur-xl md:hidden supports-[padding:max(0px)]:pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto grid max-w-[1400px] grid-cols-5 gap-1 px-2 py-2">
           {mobileTabs.map((tab) => {
-            const active = pathname === tab.href;
+            const active = isNavActive(pathname, tab.href);
             return (
               <Link
                 key={tab.href}
@@ -202,6 +219,9 @@ export function AppNav() {
                   variant="drawer"
                   onNavigate={() => setDrawerOpen(false)}
                 />
+              </div>
+              <div className="border-t border-white/5 px-4 py-3">
+                <AiximiusMark className="text-zinc-600/30" />
               </div>
             </motion.aside>
           </motion.div>

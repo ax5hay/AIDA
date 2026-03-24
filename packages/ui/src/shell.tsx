@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
+import { AiximiusMark } from "./aiximius";
 import { cn } from "./cn";
 
 export function PageShell({
@@ -41,6 +42,9 @@ export function PageShell({
           {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
         </motion.header>
         {children}
+        <div className="pointer-events-none mt-12 flex justify-center pb-1 md:mt-16">
+          <AiximiusMark />
+        </div>
       </div>
     </div>
   );

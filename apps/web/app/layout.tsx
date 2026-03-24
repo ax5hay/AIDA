@@ -18,6 +18,7 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "AIDA — CHC Decision Intelligence",
   description: "Public health decision intelligence for CHC maternal and child health programs.",
+  authors: [{ name: "Aiximius" }],
 };
 
 export const viewport: Viewport = {

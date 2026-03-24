@@ -14,7 +14,10 @@ export class AiInsightClient {
     return this.config.enabled && (this.config.lmStudioBaseUrl !== null || this.config.openaiApiKey !== null);
   }
 
-  async complete(messages: ChatMessage[]): Promise<string | null> {
+  async complete(
+    messages: ChatMessage[],
+    opts?: { model?: string },
+  ): Promise<string | null> {
     if (!this.config.enabled) return null;
 
     if (this.config.lmStudioBaseUrl) {
@@ -22,8 +25,9 @@ export class AiInsightClient {
         baseURL: this.config.lmStudioBaseUrl,
         apiKey: "lm-studio",
       });
+      const model = opts?.model?.trim() || this.config.lmStudioModel;
       const res = await client.chat.completions.create({
-        model: this.config.lmStudioModel,
+        model,
         messages,
       });
       return res.choices[0]?.message?.content ?? null;
@@ -31,8 +35,9 @@ export class AiInsightClient {
 
     if (this.config.openaiApiKey) {
       const client = new OpenAI({ apiKey: this.config.openaiApiKey });
+      const model = opts?.model?.trim() || this.config.openaiModel;
       const res = await client.chat.completions.create({
-        model: this.config.openaiModel,
+        model,
         messages,
       });
       return res.choices[0]?.message?.content ?? null;

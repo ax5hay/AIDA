@@ -10,8 +10,14 @@ export class AiController {
     return { enabled: this.ai.isEnabled() };
   }
 
+  /** Proxies LM Studio OpenAI-compatible GET /v1/models when LM_STUDIO_BASE_URL is set */
+  @Get("models")
+  models() {
+    return this.ai.listModels();
+  }
+
   @Post("insights")
-  insights(@Body() body: { snapshot: unknown }) {
-    return this.ai.insightsFromPayload(body?.snapshot ?? {});
+  insights(@Body() body: { snapshot?: unknown; model?: string }) {
+    return this.ai.insightsFromPayload(body?.snapshot ?? {}, body?.model);
   }
 }

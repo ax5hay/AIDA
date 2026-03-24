@@ -3,7 +3,9 @@ import { filtersToSearchParams } from "./query-params";
 import type {
   AnomaliesResponse,
   AssessmentDetailResponse,
+  ClinicalCrossSectionResponse,
   CorrelationsResponse,
+  DistrictRollupRow,
   ExplorerResponse,
   FacilityDto,
   OverviewResponse,
@@ -43,6 +45,19 @@ export async function getCorrelations(filters?: AnalyticsFilters, signal?: Abort
   return parseJson<CorrelationsResponse>(res, "correlations");
 }
 
+export async function getDistrictRollup(filters?: AnalyticsFilters, signal?: AbortSignal) {
+  const res = await fetch(`${base()}/analytics/district-rollup${q(filters)}`, { signal, cache: "no-store" });
+  return parseJson<DistrictRollupRow[]>(res, "district-rollup");
+}
+
+export async function getClinicalCrossSection(filters?: AnalyticsFilters, signal?: AbortSignal) {
+  const res = await fetch(`${base()}/analytics/clinical-cross-section${q(filters)}`, {
+    signal,
+    cache: "no-store",
+  });
+  return parseJson<ClinicalCrossSectionResponse>(res, "clinical-cross-section");
+}
+
 export async function getExplorer(filters?: AnalyticsFilters, signal?: AbortSignal) {
   const res = await fetch(`${base()}/analytics/explorer${q(filters)}`, { signal, cache: "no-store" });
   return parseJson<ExplorerResponse>(res, "explorer");
@@ -76,14 +91,22 @@ export async function getAiStatus(signal?: AbortSignal) {
   return parseJson<{ enabled: boolean }>(res, "ai status");
 }
 
-export async function postAiInsights(snapshot: unknown, signal?: AbortSignal) {
+export async function postAiInsights(
+  snapshot: unknown,
+  opts?: { model?: string; signal?: AbortSignal },
+) {
   const res = await fetch(`${base()}/ai/insights`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ snapshot }),
-    signal,
+    body: JSON.stringify({ snapshot, model: opts?.model }),
+    signal: opts?.signal,
   });
   return parseJson<{ enabled: boolean; text: string | null }>(res, "ai insights");
+}
+
+export async function getAiModels(signal?: AbortSignal) {
+  const res = await fetch(`${base()}/ai/models`, { signal, cache: "no-store" });
+  return parseJson<{ data: Array<{ id: string }> }>(res, "ai models");
 }
 
 export async function getAnomalies(

@@ -124,6 +124,21 @@ export default function OverviewPage() {
         />
       </div>
 
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link
+          href={withQueryString("/analytics", qs)}
+          className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:bg-cyan-500/10"
+        >
+          Open analytics suite →
+        </Link>
+        <Link
+          href={withQueryString("/correlations", qs)}
+          className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.06]"
+        >
+          Correlation matrix
+        </Link>
+      </div>
+
       <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-medium text-white">Live births — statistical anomalies</h3>

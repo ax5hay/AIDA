@@ -169,7 +169,45 @@ export type PublicConfigResponse = {
   webOrigin: string | null;
   aiInsightsEnabled: boolean;
   aiProviderReady: boolean;
+  lmStudioConfigured: boolean;
+  defaultLmStudioModel: string;
   defaultApiBase: string;
+};
+
+export type DistrictRollupRow = {
+  district: string;
+  state: string;
+  assessments: number;
+  live_births: number;
+  maternal_deaths: number;
+  early_neonatal_deaths: number;
+  anc_registered_total: number;
+  hiv_tested_total: number;
+  hemoglobin_4x_total: number;
+};
+
+/** Paired fields from the same assessment row(s) for interpretable charts */
+export type ClinicalCrossSectionResponse = {
+  ancHgb: Array<{
+    assessmentId: string;
+    total_anc_registered: number;
+    hemoglobin_tested_4_times: number;
+  }>;
+  ancHiv: Array<{
+    assessmentId: string;
+    total_anc_registered: number;
+    hiv_tested: number;
+  }>;
+  pregAnemiaVsLive: Array<{
+    assessmentId: string;
+    pregnancy_anemia_screened: number;
+    live_births: number;
+  }>;
+  preconceptionAnemiaIdVsManaged: Array<{
+    assessmentId: string;
+    preconception_anemia_identified: number;
+    preconception_anemia_managed: number;
+  }>;
 };
 
 export type AnomaliesResponse = {

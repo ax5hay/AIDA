@@ -8,10 +8,16 @@ export type AiEngineConfig = {
   anthropicApiKey: string | null;
 };
 
+export function normalizeLmStudioBaseUrl(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  return /\/v1\/?$/.test(value) ? value.replace(/\/+$/, "") : `${value.replace(/\/+$/, "")}/v1`;
+}
+
 export function loadAiConfigFromEnv(): AiEngineConfig {
   return {
     enabled: process.env.AI_INSIGHTS_ENABLED === "true",
-    lmStudioBaseUrl: process.env.LM_STUDIO_BASE_URL ?? null,
+    lmStudioBaseUrl: normalizeLmStudioBaseUrl(process.env.LM_STUDIO_BASE_URL),
     lmStudioModel: process.env.LM_STUDIO_MODEL ?? "local-model",
     openaiApiKey: process.env.OPENAI_API_KEY ?? null,
     openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",

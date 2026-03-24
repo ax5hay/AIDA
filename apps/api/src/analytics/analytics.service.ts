@@ -540,4 +540,164 @@ export class AnalyticsService {
       validationIssues,
     };
   }
+
+  /** Aggregates assessment rows by facility district (exploratory regional comparison). */
+  async districtRollup(f: ExplorerFilters) {
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: {
+        facility: { select: { district: true, state: true } },
+        deliveryAndOutcomes: {
+          select: {
+            live_births: true,
+            maternal_deaths: true,
+            early_neonatal_deaths_lt_24hrs: true,
+          },
+        },
+        pregnantWomenRegisteredAndScreened: {
+          select: {
+            total_anc_registered: true,
+            hiv_tested: true,
+            hemoglobin_tested_4_times: true,
+          },
+        },
+      },
+    });
+
+    type Agg = {
+      district: string;
+      state: string;
+      assessments: number;
+      live_births: number;
+      maternal_deaths: number;
+      early_neonatal_deaths: number;
+      anc_registered_total: number;
+      hiv_tested_total: number;
+      hemoglobin_4x_total: number;
+    };
+    const map = new Map<string, Agg>();
+    for (const r of rows) {
+      const d = r.facility.district;
+      const cur: Agg =
+        map.get(d) ??
+        {
+          district: d,
+          state: r.facility.state,
+          assessments: 0,
+          live_births: 0,
+          maternal_deaths: 0,
+          early_neonatal_deaths: 0,
+          anc_registered_total: 0,
+          hiv_tested_total: 0,
+          hemoglobin_4x_total: 0,
+        };
+      cur.assessments += 1;
+      cur.live_births += r.deliveryAndOutcomes?.live_births ?? 0;
+      cur.maternal_deaths += r.deliveryAndOutcomes?.maternal_deaths ?? 0;
+      cur.early_neonatal_deaths += r.deliveryAndOutcomes?.early_neonatal_deaths_lt_24hrs ?? 0;
+      const p = r.pregnantWomenRegisteredAndScreened;
+      cur.anc_registered_total += p?.total_anc_registered ?? 0;
+      cur.hiv_tested_total += p?.hiv_tested ?? 0;
+      cur.hemoglobin_4x_total += p?.hemoglobin_tested_4_times ?? 0;
+      map.set(d, cur);
+    }
+    return [...map.values()].sort((a, b) => b.assessments - a.assessments);
+  }
+
+  /**
+   * Per-assessment pairs for scatter plots where both axes come from the same reporting row
+   * (or clearly paired sections), so comparisons are interpretable.
+   */
+  async clinicalCrossSection(f: ExplorerFilters) {
+    const rows = await this.prisma.chcAssessment.findMany({
+      where: this.whereClause(f),
+      select: {
+        id: true,
+        pregnantWomenRegisteredAndScreened: {
+          select: {
+            total_anc_registered: true,
+            hiv_tested: true,
+            hemoglobin_tested_4_times: true,
+          },
+        },
+        pregnantWomenIdentified: {
+          select: {
+            severe_anemia_hb_lt_7: true,
+            moderate_anemia_hb_7_to_9_9: true,
+          },
+        },
+        preconceptionWomenIdentified: {
+          select: {
+            severe_anemia_hb_lt_8: true,
+            moderate_anemia_hb_8_to_11_99: true,
+          },
+        },
+        preconceptionWomenManaged: {
+          select: {
+            severe_anemia_hb_lt_8: true,
+            moderate_anemia_hb_8_to_11_99: true,
+          },
+        },
+        deliveryAndOutcomes: { select: { live_births: true } },
+      },
+    });
+
+    const ancHgb: Array<{ assessmentId: string; total_anc_registered: number; hemoglobin_tested_4_times: number }> =
+      [];
+    const ancHiv: Array<{ assessmentId: string; total_anc_registered: number; hiv_tested: number }> = [];
+    const pregAnemiaVsLive: Array<{
+      assessmentId: string;
+      pregnancy_anemia_screened: number;
+      live_births: number;
+    }> = [];
+    const preconceptionAnemiaIdVsManaged: Array<{
+      assessmentId: string;
+      preconception_anemia_identified: number;
+      preconception_anemia_managed: number;
+    }> = [];
+
+    for (const r of rows) {
+      const anc = r.pregnantWomenRegisteredAndScreened;
+      if (anc) {
+        ancHgb.push({
+          assessmentId: r.id,
+          total_anc_registered: anc.total_anc_registered,
+          hemoglobin_tested_4_times: anc.hemoglobin_tested_4_times,
+        });
+        ancHiv.push({
+          assessmentId: r.id,
+          total_anc_registered: anc.total_anc_registered,
+          hiv_tested: anc.hiv_tested,
+        });
+      }
+      const pw = r.pregnantWomenIdentified;
+      const live = r.deliveryAndOutcomes?.live_births ?? 0;
+      if (pw) {
+        pregAnemiaVsLive.push({
+          assessmentId: r.id,
+          pregnancy_anemia_screened:
+            (pw.severe_anemia_hb_lt_7 ?? 0) + (pw.moderate_anemia_hb_7_to_9_9 ?? 0),
+          live_births: live,
+        });
+      }
+      const pi = r.preconceptionWomenIdentified;
+      const pm = r.preconceptionWomenManaged;
+      if (pi && pm) {
+        preconceptionAnemiaIdVsManaged.push({
+          assessmentId: r.id,
+          preconception_anemia_identified:
+            (pi.severe_anemia_hb_lt_8 ?? 0) + (pi.moderate_anemia_hb_8_to_11_99 ?? 0),
+          preconception_anemia_managed:
+            (pm.severe_anemia_hb_lt_8 ?? 0) + (pm.moderate_anemia_hb_8_to_11_99 ?? 0),
+        });
+      }
+    }
+
+    return {
+      ancHgb,
+      ancHiv,
+      pregAnemiaVsLive,
+      preconceptionAnemiaIdVsManaged,
+    };
+  }
 }
