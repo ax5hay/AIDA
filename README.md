@@ -43,9 +43,9 @@ Then use `npm install`, `npm run db:*`, `npm run dev:api`, `npm run dev:web` as 
 ```mermaid
 flowchart LR
   PG[(PostgreSQL)]
-  DB[@aida/db Prisma]
-  AE[@aida/analytics-engine]
-  ML[@aida/ml-engine]
+  DB["@aida/db · Prisma"]
+  AE["@aida/analytics-engine"]
+  ML["@aida/ml-engine"]
   API[NestJS API]
   WEB[Next.js App]
   PG --> DB
