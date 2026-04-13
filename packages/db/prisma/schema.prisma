@@ -47,6 +47,7 @@ model ChcAssessment {
   @@index([periodStart])
   @@index([periodEnd])
   @@index([facilityId, periodStart])
+  @@unique([facilityId, periodStart, periodEnd])
 }
 
 /// SECTION: PRECONCEPTION_WOMEN_IDENTIFIED

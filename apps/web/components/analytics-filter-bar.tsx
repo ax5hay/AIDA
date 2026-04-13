@@ -15,6 +15,24 @@ export function AnalyticsFilterBar({
   onChange: (patch: Partial<AnalyticsFilters>) => void;
   onClear: () => void;
 }) {
+  const invalidDateRange = Boolean(filters.from && filters.to && filters.from > filters.to);
+
+  const onFromChange = (nextFrom?: string) => {
+    if (nextFrom && filters.to && nextFrom > filters.to) {
+      onChange({ from: nextFrom, to: undefined });
+      return;
+    }
+    onChange({ from: nextFrom });
+  };
+
+  const onToChange = (nextTo?: string) => {
+    if (nextTo && filters.from && nextTo < filters.from) {
+      onChange({ from: undefined, to: nextTo });
+      return;
+    }
+    onChange({ to: nextTo });
+  };
+
   const facilitiesQ = useQuery({
     queryKey: ["facilities"],
     queryFn: ({ signal }) => getFacilities(signal),
@@ -36,13 +54,19 @@ export function AnalyticsFilterBar({
       animate={{ opacity: 1, y: 0 }}
       className="mb-8 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 md:flex-row md:flex-wrap md:items-end"
     >
+      <p className="w-full text-xs text-zinc-500">
+        <span className="font-medium text-zinc-300">What this is:</span> Shared filter bar.{" "}
+        <span className="font-medium text-zinc-300">What it does:</span> updates every chart/table on the page using
+        the same date, district, and facility window.
+      </p>
       <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
         From
         <input
           type="date"
           className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-base text-zinc-200 sm:min-h-0 sm:text-sm"
           value={filters.from ?? ""}
-          onChange={(e) => onChange({ from: e.target.value || undefined })}
+          max={filters.to}
+          onChange={(e) => onFromChange(e.target.value || undefined)}
         />
       </label>
       <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
@@ -51,7 +75,8 @@ export function AnalyticsFilterBar({
           type="date"
           className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-base text-zinc-200 sm:min-h-0 sm:text-sm"
           value={filters.to ?? ""}
-          onChange={(e) => onChange({ to: e.target.value || undefined })}
+          min={filters.from}
+          onChange={(e) => onToChange(e.target.value || undefined)}
         />
       </label>
       <label className="flex min-w-[160px] flex-1 flex-col gap-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
@@ -106,6 +131,11 @@ export function AnalyticsFilterBar({
           Clear filters
         </button>
       </div>
+      {invalidDateRange ? (
+        <p className="w-full text-xs text-amber-300">
+          Invalid date window detected. Choose a `from` date earlier than `to`.
+        </p>
+      ) : null}
     </motion.div>
   );
 }

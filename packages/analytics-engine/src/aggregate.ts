@@ -4,6 +4,8 @@ export type FieldMetric = {
   /** Percentage vs denominator when applicable (0–100); null if no denominator */
   pctOfDenominator: number | null;
   denominator: number | null;
+  /** Short explanation of what the denominator represents */
+  denominatorNote?: string;
 };
 
 export type TimeSeriesPoint = {

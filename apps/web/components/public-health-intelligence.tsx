@@ -86,16 +86,7 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
   });
 
   const pipelines = data?.pipelines ?? [];
-  const ts = data?.time_series as
-    | {
-        months?: string[];
-        hiv_screening_rate?: (number | null)[];
-        hiv_ma3?: (number | null)[];
-        lbw_rate?: (number | null)[];
-        spikes?: { hiv_screening_indices?: number[]; lbw_rate_indices?: number[] };
-        trend?: { hiv_screening?: string; lbw?: string };
-      }
-    | undefined;
+  const ts = data?.time_series;
 
   const lineData =
     ts?.months?.map((m, i) => ({
@@ -105,72 +96,18 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
       lbw: ts.lbw_rate?.[i] ?? null,
     })) ?? [];
 
-  const gaps = data?.gaps as
-    | {
-        district_heatmap?: Array<{
-          district: string;
-          severity_score: number;
-          screening_gap_rate: number | null;
-          treatment_gap_rate: number | null;
-          lbw_rate: number | null;
-        }>;
-      }
-    | undefined;
+  const gaps = data?.gaps;
+  const corr = data?.correlation_engine;
+  const dist = data?.distributions;
+  const multi = data?.multivariate;
+  const kpis = data?.kpis;
+  const insights = data?.insights;
 
-  const corr = data?.correlation_engine as
-    | {
-        presets?: Record<string, { pearson: number | null; spearman: number | null; label: string }>;
-        extended_matrix?: Array<{ row: string; col: string; r: number | null }>;
-      }
-    | undefined;
-
-  const dist = data?.distributions as
-    | {
-        pregnancy_bmi_bands?: Array<{ label: string; absolute: number; shareOfSection: number }>;
-        pregnancy_anemia_severity?: Array<{ label: string; absolute: number; shareOfSection: number }>;
-        birth_weight_bands?: Array<{ label: string; absolute: number; shareOfSection: number }>;
-      }
-    | undefined;
-
-  const multi = data?.multivariate as
-    | {
-        bubbles?: Array<{
-          assessmentId: string;
-          anc_registered: number;
-          diabetes_identified: number;
-          institutional_rate: number | null;
-        }>;
-        anc_ogtt_institutional?: Array<{
-          assessmentId: string;
-          x: number;
-          y: number;
-          z: number | null;
-        }>;
-      }
-    | undefined;
-
-  const kpis = data?.kpis as
-    | {
-        screening_coverage_hiv?: number | null;
-        treatment_success_proxy?: number | null;
-        lbw_rate?: number | null;
-        deltas_half_window?: { hiv_screening_pp?: number | null; lbw_rate_pp?: number | null };
-      }
-    | undefined;
-
-  const insights = data?.insights as
-    | {
-        pipelines?: { what: string; why: string; next: string };
-        gaps?: { what: string; why: string; next: string };
-        correlations?: { what: string; why: string; next: string };
-        cohorts?: { what: string; why: string; next: string };
-        trends?: { what: string; why: string; next: string };
-        anomalies?: { what: string; why: string; next: string };
-      }
-    | undefined;
-
-  const matrixNames = [...new Set((corr?.extended_matrix ?? []).map((c) => c.row))].sort((a, b) =>
-    a.localeCompare(b),
+  const matrixNames = [
+    ...new Set((corr?.extended_matrix ?? []).flatMap((c) => [c.row, c.col])),
+  ].sort((a, b) => a.localeCompare(b));
+  const matrixLookup = new Map(
+    (corr?.extended_matrix ?? []).map((cell) => [`${cell.row}::${cell.col}`, cell.r]),
   );
 
   const bubbleData =
@@ -398,8 +335,7 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
                     <tr key={row} className="border-b border-white/5">
                       <td className="p-1 font-mono text-zinc-500">{row}</td>
                       {matrixNames.map((col) => {
-                        const cell = corr?.extended_matrix?.find((c) => c.row === row && c.col === col);
-                        const r = cell?.r;
+                        const r = matrixLookup.get(`${row}::${col}`);
                         const heat =
                           r === null || r === undefined
                             ? "bg-transparent"
@@ -561,20 +497,16 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
       </div>
 
       {/* Cohort retention */}
-      {Array.isArray((data?.cohorts as { retention?: unknown })?.retention) &&
-      ((data?.cohorts as { retention: Array<{ month: string; postpartum_checkup_rate: number | null }> }).retention
-        .length ?? 0) > 0 ? (
+      {(data?.cohorts.retention?.length ?? 0) > 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
           <h3 className="text-sm font-medium text-white">Retention — postpartum checkup vs deliveries (by month)</h3>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={(data?.cohorts as { retention: Array<{ month: string; postpartum_checkup_rate: number | null }> }).retention.map(
-                  (r) => ({
-                    m: r.month.slice(5),
-                    rate: r.postpartum_checkup_rate,
-                  }),
-                )}
+                data={(data?.cohorts.retention ?? []).map((r) => ({
+                  m: r.month.slice(5),
+                  rate: r.postpartum_checkup_rate,
+                }))}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis dataKey="m" {...CHART_AXIS} />

@@ -5,10 +5,12 @@ import type { Prisma } from "@aida/db";
  * Full graph remains on `assessmentDetail` via CHC_ASSESSMENT_ANALYTICS_INCLUDE.
  */
 
-/** Overview KPIs + validation — no facility join, no remarks/documents/highRisk/infants/postnatal */
+/** Overview KPIs + validation — no remarks/documents/highRisk/infants/postnatal */
 export const CHC_ASSESSMENT_OVERVIEW_SELECT = {
   id: true,
+  facilityId: true,
   periodStart: true,
+  facility: { select: { district: true } },
   preconceptionWomenIdentified: true,
   preconceptionInterventions: true,
   preconceptionWomenManaged: true,
@@ -78,6 +80,7 @@ export const CHC_SECTION_SELECTS: Record<string, Prisma.ChcAssessmentSelect> = {
 
 export const CHC_CORRELATIONS_SELECT = {
   id: true,
+  periodStart: true,
   preconceptionWomenIdentified: {
     select: {
       severe_anemia_hb_lt_8: true,

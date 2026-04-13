@@ -24,13 +24,13 @@ export function useAnalyticsFilters() {
         else p.set(key, v);
       }
       const qs = p.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
     [pathname, router, searchParams],
   );
 
   const clearFilters = useCallback(() => {
-    router.push(pathname);
+    router.replace(pathname);
   }, [pathname, router]);
 
   return { filters, setFilters, clearFilters, filtersKey: filtersKey(filters) };

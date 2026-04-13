@@ -14,7 +14,8 @@ import {
   buildTimeSeries,
   distributionShares,
   earlyNeonatalMortalityRate,
-  fieldMetrics,
+  buildFieldMetricsForSection,
+  monthlyDenominatorForField,
   institutionalDeliveryRatio,
   lbwRate,
   managementGaps,
@@ -66,10 +67,29 @@ export type { ExplorerFilters } from "./analytics-filters";
 
 @Injectable()
 export class AnalyticsService {
+  private readonly maxAnalyticsRows = Number(process.env.MAX_ANALYTICS_ROWS ?? 5000);
+  private readonly maxExplorerPageSize = Number(process.env.MAX_EXPLORER_PAGE_SIZE ?? 500);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
+
+  private async findManyCapped<T>(
+    label: string,
+    args: Omit<Prisma.ChcAssessmentFindManyArgs, "take">,
+  ): Promise<T[]> {
+    const rows = (await this.prisma.chcAssessment.findMany({
+      ...args,
+      take: this.maxAnalyticsRows + 1,
+    })) as T[];
+    if (rows.length > this.maxAnalyticsRows) {
+      throw new BadRequestException(
+        `Query too large for ${label}. Narrow filters or reduce date window (max ${this.maxAnalyticsRows} rows).`,
+      );
+    }
+    return rows;
+  }
 
   private cacheKey(prefix: string, f: ExplorerFilters): string {
     return `${prefix}:${f.from ?? ""}:${f.to ?? ""}:${f.district ?? ""}:${f.facilityId ?? ""}`;
@@ -77,8 +97,20 @@ export class AnalyticsService {
 
   private whereClause(f: ExplorerFilters): Prisma.ChcAssessmentWhereInput {
     const period: Prisma.DateTimeFilter = {};
-    if (f.from) period.gte = new Date(f.from);
-    if (f.to) period.lte = new Date(f.to);
+    if (f.from) {
+      const fromDate = new Date(f.from);
+      if (Number.isNaN(fromDate.getTime())) {
+        throw new BadRequestException("Invalid from date");
+      }
+      period.gte = fromDate;
+    }
+    if (f.to) {
+      const toDate = new Date(f.to);
+      if (Number.isNaN(toDate.getTime())) {
+        throw new BadRequestException("Invalid to date");
+      }
+      period.lte = toDate;
+    }
     const where: Prisma.ChcAssessmentWhereInput = {};
     if (f.from || f.to) where.periodStart = period;
     if (f.facilityId) where.facilityId = f.facilityId;
@@ -91,7 +123,7 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_INTELLIGENCE_SELECT }>>("intelligence", {
       where: this.whereClause(f),
       select: CHC_INTELLIGENCE_SELECT,
       orderBy: { periodStart: "asc" },
@@ -108,7 +140,7 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_INTELLIGENCE_SELECT }>>("decision-support", {
       where: this.whereClause(f),
       select: CHC_INTELLIGENCE_SELECT,
       orderBy: { periodStart: "asc" },
@@ -159,7 +191,7 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_ASSESSMENT_OVERVIEW_SELECT }>>("overview", {
       where: this.whereClause(f),
       select: CHC_ASSESSMENT_OVERVIEW_SELECT,
       orderBy: { periodStart: "asc" },
@@ -272,10 +304,63 @@ export class AnalyticsService {
       return issues;
     });
 
+    const facilityIds = new Set(rows.map((r) => r.facilityId));
+    const districts = new Set(
+      rows.map((r) => r.facility?.district).filter((d): d is string => Boolean(d)),
+    );
+    const periodStarts = rows.map((r) => r.periodStart.getTime());
+    const periodStartMin =
+      periodStarts.length > 0 ? new Date(Math.min(...periodStarts)).toISOString().slice(0, 10) : null;
+    const periodStartMax =
+      periodStarts.length > 0 ? new Date(Math.max(...periodStarts)).toISOString().slice(0, 10) : null;
+
+    const sectionCoverage = {
+      preconception_women_identified: rows.filter((r) => r.preconceptionWomenIdentified != null).length,
+      preconception_interventions: rows.filter((r) => r.preconceptionInterventions != null).length,
+      preconception_women_managed: rows.filter((r) => r.preconceptionWomenManaged != null).length,
+      pregnant_women_registered_and_screened: rows.filter((r) => r.pregnantWomenRegisteredAndScreened != null)
+        .length,
+      pregnant_women_identified: rows.filter((r) => r.pregnantWomenIdentified != null).length,
+      pregnant_women_managed: rows.filter((r) => r.pregnantWomenManaged != null).length,
+      delivery_and_outcomes: rows.filter((r) => r.deliveryAndOutcomes != null).length,
+    };
+
+    const reg = regTot as Record<string, number>;
+    const ancNumerators = {
+      denominator_total_anc_registered: reg.total_anc_registered ?? 0,
+      hiv_tested: reg.hiv_tested ?? 0,
+      hemoglobin_tested_4_times: reg.hemoglobin_tested_4_times ?? 0,
+      blood_pressure_checked: reg.blood_pressure_checked ?? 0,
+      cbc_tested: reg.cbc_tested ?? 0,
+      gdm_ogtt_tested: reg.gdm_ogtt_tested ?? 0,
+      thyroid_tsh_tested: reg.thyroid_tsh_tested ?? 0,
+      syphilis_tested: reg.syphilis_tested ?? 0,
+      urine_routine_microscopy: reg.urine_routine_microscopy ?? 0,
+      blood_grouping: reg.blood_grouping ?? 0,
+    };
+
+    const del = delTot as Record<string, number>;
+    const outcomeDenominators = {
+      live_births: del.live_births ?? 0,
+      maternal_deaths: del.maternal_deaths ?? 0,
+      early_neonatal_deaths_lt_24hrs: del.early_neonatal_deaths_lt_24hrs ?? 0,
+      lbw_lt_2500g: del.lbw_lt_2500g ?? 0,
+      preterm_births_lt_37_weeks: del.preterm_births_lt_37_weeks ?? 0,
+    };
+
     const payload = {
       meta: {
         assessmentCount: rows.length,
+        facilityCount: facilityIds.size,
+        districtCount: districts.size,
+        periodStartMin,
+        periodStartMax,
         filters: f,
+      },
+      corpus: {
+        sectionCoverage,
+        ancNumerators,
+        outcomeDenominators,
       },
       kpis: {
         screening_rates: sr,
@@ -348,7 +433,7 @@ export class AnalyticsService {
       throw new NotFoundException(`Unknown section: ${section}`);
     }
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof select }>>(`section:${section}`, {
       where: this.whereClause(f),
       select,
       orderBy: { periodStart: "asc" },
@@ -394,12 +479,12 @@ export class AnalyticsService {
       .map((r) => pick(r as ChcAssessmentAnalytics))
       .filter((x): x is Record<string, number> => x !== null && x !== undefined);
     const totals = sumFields(flat, fieldList as unknown as string[]);
-    const denom =
-      section === "pregnant_women_registered_and_screened"
-        ? totals["total_anc_registered" as keyof typeof totals]
-        : null;
 
-    const metrics = fieldMetrics(totals as Record<string, number>, fieldList as unknown as string[], denom);
+    const metrics = buildFieldMetricsForSection(
+      section,
+      totals as Record<string, number>,
+      fieldList as unknown as string[],
+    );
     const distribution = distributionShares(totals as Record<string, number>, fieldList as unknown as string[]);
 
     const buckets = this.monthBuckets(rows, (r) => pick(r as ChcAssessmentAnalytics) ?? null);
@@ -409,10 +494,9 @@ export class AnalyticsService {
         buckets.map((b) => ({ periodStart: b.periodStart, rows: b.rows })),
         field,
         (i: number) => {
-          if (section !== "pregnant_women_registered_and_screened") return null;
           const b = buckets[i];
-          const t = sumFields(b.rows, PREGNANT_WOMEN_REGISTERED_AND_SCREENED_FIELDS as unknown as string[]);
-          return t.total_anc_registered;
+          const t = sumFields(b.rows, fieldList as unknown as string[]);
+          return monthlyDenominatorForField(section, field, t as Record<string, number>, fieldList as unknown as string[]);
         },
       ),
     }));
@@ -435,7 +519,7 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_CORRELATIONS_SELECT }>>("correlations", {
       where: this.whereClause(f),
       select: CHC_CORRELATIONS_SELECT,
       orderBy: { periodStart: "asc" },
@@ -461,6 +545,52 @@ export class AnalyticsService {
       return p.bmi_lt_18_5 + p.bmi_lt_25;
     });
 
+    const sorted = [...rows].sort((a, b) => a.periodStart.getTime() - b.periodStart.getTime());
+    const mid = Math.max(1, Math.floor(sorted.length / 2));
+    const beforeRows = sorted.slice(0, mid);
+    const afterRows = sorted.slice(mid);
+
+    const buildAnemiaBmiSeries = (subset: typeof sorted) => {
+      const ap = subset.map((r) => {
+        const p = r.preconceptionWomenIdentified;
+        if (!p) return 0;
+        return p.severe_anemia_hb_lt_8 + p.moderate_anemia_hb_8_to_11_99;
+      });
+      const bp = subset.map((r) => {
+        const p = r.preconceptionWomenIdentified;
+        if (!p) return 0;
+        return p.bmi_lt_16 + p.bmi_16_to_18_49 + p.bmi_18_5_to_lt_21;
+      });
+      const apg = subset.map((r) => {
+        const p = r.pregnantWomenIdentified;
+        if (!p) return 0;
+        return p.severe_anemia_hb_lt_7 + p.moderate_anemia_hb_7_to_9_9;
+      });
+      const bpg = subset.map((r) => {
+        const p = r.pregnantWomenIdentified;
+        if (!p) return 0;
+        return p.bmi_lt_18_5 + p.bmi_lt_25;
+      });
+      return {
+        pre_r: correlationCoefficient(ap, bp),
+        preg_r: correlationCoefficient(apg, bpg),
+        live_sum: subset.reduce((s, r) => s + (r.deliveryAndOutcomes?.live_births ?? 0), 0),
+        n: subset.length,
+      };
+    };
+
+    const beforeStats = buildAnemiaBmiSeries(beforeRows);
+    const afterStats = buildAnemiaBmiSeries(afterRows);
+    const cutoff = sorted[mid - 1]?.periodStart;
+    const interventionComparison = {
+      method: "median_period_split" as const,
+      note:
+        "Exploratory before/after split at the midpoint of the filtered timeline — not a randomized trial. Use for programme timing hypotheses only.",
+      cutoffPeriodStart: cutoff ? cutoff.toISOString().slice(0, 10) : null,
+      before: beforeStats,
+      after: afterStats,
+    };
+
     const payload = {
       anemia_vs_bmi: {
         preconception: {
@@ -480,6 +610,7 @@ export class AnalyticsService {
           })),
         },
       },
+      interventionComparison,
       matrix: correlationMatrix({
         anemia_pre: anemiaPre,
         bmi_pre: bmiPre,
@@ -492,8 +623,13 @@ export class AnalyticsService {
     return payload;
   }
 
-  async anomalies(metric: "live_births" | "maternal_deaths", f: ExplorerFilters) {
-    const rows = await this.prisma.chcAssessment.findMany({
+  async anomalies(
+    metric: "live_births" | "maternal_deaths",
+    f: ExplorerFilters,
+    page = 1,
+    pageSize = 25,
+  ) {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_ANOMALIES_SELECT }>>("anomalies", {
       where: this.whereClause(f),
       select: CHC_ANOMALIES_SELECT,
       orderBy: { periodStart: "asc" },
@@ -505,26 +641,63 @@ export class AnalyticsService {
     });
     const thresholdZ = 2.5;
     const flags = detectAnomalies(values, thresholdZ);
+    const allPoints = flags.map((x: AnomalyFlag) => ({
+      ...x,
+      assessmentId: rows[x.index]?.id,
+      facility: rows[x.index]?.facility?.name,
+    }));
+    const safePage = Number.isInteger(page) && page >= 1 ? page : 1;
+    const safeSize = Number.isInteger(pageSize) && pageSize >= 1 && pageSize <= 200 ? pageSize : 25;
+    const total = allPoints.length;
+    const totalPages = Math.max(1, Math.ceil(total / safeSize));
+    const pagedPage = Math.min(safePage, totalPages);
+    const start = (pagedPage - 1) * safeSize;
+    const points = allPoints.slice(start, start + safeSize);
     return {
       metric,
       thresholdZ,
-      points: flags.map((x: AnomalyFlag) => ({
-        ...x,
-        assessmentId: rows[x.index]?.id,
-        facility: rows[x.index]?.facility?.name,
-      })),
+      meta: {
+        page: pagedPage,
+        pageSize: safeSize,
+        total,
+        totalPages,
+        hasMore: pagedPage < totalPages,
+      },
+      points,
     };
   }
 
-  async explorer(f: ExplorerFilters) {
+  async explorer(f: ExplorerFilters, page = 1, pageSize = 200) {
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException("page must be a positive integer");
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1) {
+      throw new BadRequestException("pageSize must be a positive integer");
+    }
+    if (pageSize > this.maxExplorerPageSize) {
+      throw new BadRequestException(`pageSize too large. Max ${this.maxExplorerPageSize}.`);
+    }
+    const where = this.whereClause(f);
+    const totalCount = await this.prisma.chcAssessment.count({ where });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const skip = (safePage - 1) * pageSize;
+
     const rows = await this.prisma.chcAssessment.findMany({
-      where: this.whereClause(f),
+      where,
       select: CHC_EXPLORER_SELECT,
       orderBy: { periodStart: "asc" },
+      skip,
+      take: pageSize,
     });
     return {
       meta: {
-        totalCount: rows.length,
+        totalCount,
+        page: safePage,
+        pageSize,
+        totalPages,
+        hasMore: safePage < totalPages,
+        returnedCount: rows.length,
         filters: {
           from: f.from,
           to: f.to,
@@ -663,7 +836,27 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<
+      Prisma.ChcAssessmentGetPayload<{
+        select: {
+          facility: { select: { district: true; state: true } };
+          deliveryAndOutcomes: {
+            select: {
+              live_births: true;
+              maternal_deaths: true;
+              early_neonatal_deaths_lt_24hrs: true;
+            };
+          };
+          pregnantWomenRegisteredAndScreened: {
+            select: {
+              total_anc_registered: true;
+              hiv_tested: true;
+              hemoglobin_tested_4_times: true;
+            };
+          };
+        };
+      }>
+    >("district-rollup", {
       where: this.whereClause(f),
       select: {
         facility: { select: { district: true, state: true } },
@@ -735,7 +928,28 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<
+      Prisma.ChcAssessmentGetPayload<{
+        select: {
+          id: true;
+          pregnantWomenRegisteredAndScreened: {
+            select: {
+              total_anc_registered: true;
+              hiv_tested: true;
+              hemoglobin_tested_4_times: true;
+            };
+          };
+          pregnantWomenIdentified: { select: { severe_anemia_hb_lt_7: true; moderate_anemia_hb_7_to_9_9: true } };
+          preconceptionWomenIdentified: {
+            select: { severe_anemia_hb_lt_8: true; moderate_anemia_hb_8_to_11_99: true };
+          };
+          preconceptionWomenManaged: {
+            select: { severe_anemia_hb_lt_8: true; moderate_anemia_hb_8_to_11_99: true };
+          };
+          deliveryAndOutcomes: { select: { live_births: true } };
+        };
+      }>
+    >("clinical-cross-section", {
       where: this.whereClause(f),
       select: {
         id: true,
@@ -864,7 +1078,7 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.prisma.chcAssessment.findMany({
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_INTELLIGENCE_SELECT }>>("comparison-lab", {
       where: this.whereClause(f),
       select: CHC_INTELLIGENCE_SELECT,
       orderBy: { periodStart: "asc" },

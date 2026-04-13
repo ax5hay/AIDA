@@ -25,11 +25,39 @@ export type ManagementGaps = {
 
 export type OverviewMeta = {
   assessmentCount: number;
+  facilityCount: number;
+  districtCount: number;
+  periodStartMin: string | null;
+  periodStartMax: string | null;
   filters: {
     from?: string;
     to?: string;
     district?: string;
     facilityId?: string;
+  };
+};
+
+/** Row counts with each clinical section present — under current filters */
+export type OverviewCorpus = {
+  sectionCoverage: Record<string, number>;
+  ancNumerators: {
+    denominator_total_anc_registered: number;
+    hiv_tested: number;
+    hemoglobin_tested_4_times: number;
+    blood_pressure_checked: number;
+    cbc_tested: number;
+    gdm_ogtt_tested: number;
+    thyroid_tsh_tested: number;
+    syphilis_tested: number;
+    urine_routine_microscopy: number;
+    blood_grouping: number;
+  };
+  outcomeDenominators: {
+    live_births: number;
+    maternal_deaths: number;
+    early_neonatal_deaths_lt_24hrs: number;
+    lbw_lt_2500g: number;
+    preterm_births_lt_37_weeks: number;
   };
 };
 
@@ -63,6 +91,7 @@ export type OverviewFunnel = {
 
 export type OverviewResponse = {
   meta: OverviewMeta;
+  corpus: OverviewCorpus;
   kpis: OverviewKpis;
   funnel: OverviewFunnel;
   alerts: Array<{ severity: "info" | "warning" | "critical"; action: string }>;
@@ -74,6 +103,7 @@ export type FieldMetric = {
   absolute: number;
   pctOfDenominator: number | null;
   denominator: number | null;
+  denominatorNote?: string;
 };
 
 export type ComparativeSlice = {
@@ -113,10 +143,24 @@ export type CorrelationMatrixCell = {
   r: number | null;
 };
 
+export type InterventionWindowStats = {
+  pre_r: number | null;
+  preg_r: number | null;
+  live_sum: number;
+  n: number;
+};
+
 export type CorrelationsResponse = {
   anemia_vs_bmi: {
     preconception: CorrelationPair;
     pregnancy: CorrelationPair;
+  };
+  interventionComparison: {
+    method: string;
+    note: string;
+    cutoffPeriodStart: string | null;
+    before: InterventionWindowStats;
+    after: InterventionWindowStats;
   };
   matrix: CorrelationMatrixCell[];
 };
@@ -152,6 +196,11 @@ export type ExplorerRow = {
 export type ExplorerResponse = {
   meta: {
     totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasMore: boolean;
+    returnedCount: number;
     filters: OverviewMeta["filters"];
   };
   rows: ExplorerRow[];
@@ -214,6 +263,13 @@ export type AnomaliesResponse = {
   metric: "live_births" | "maternal_deaths";
   /** Z-score threshold used for flagging (e.g. 2.5) */
   thresholdZ: number;
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
   points: Array<{
     index: number;
     value: number;
@@ -263,20 +319,110 @@ export type PipelineBundleDto = {
   bottleneckId: string | null;
 };
 
+export type DistrictHeatmapRow = {
+  district: string;
+  severity_score: number;
+  screening_gap_rate: number | null;
+  treatment_gap_rate: number | null;
+  lbw_rate: number | null;
+};
+
+export type IntelligenceCorrelationPreset = {
+  pearson: number | null;
+  spearman: number | null;
+  label: string;
+};
+
+export type IntelligenceCorrelationMatrixCell = {
+  row: string;
+  col: string;
+  r: number | null;
+};
+
+export type IntelligenceBmiBand = {
+  label: string;
+  absolute: number;
+  shareOfSection: number;
+};
+
+export type IntelligenceBubblePoint = {
+  assessmentId: string;
+  anc_registered: number;
+  diabetes_identified: number;
+  institutional_rate: number | null;
+};
+
+export type IntelligenceScatterPoint = {
+  assessmentId: string;
+  x: number;
+  y: number;
+  z: number | null;
+};
+
+export type IntelligenceRetentionPoint = {
+  month: string;
+  postpartum_checkup_rate: number | null;
+};
+
+export type IntelligenceNarrativeBlock = {
+  what: string;
+  why: string;
+  next: string;
+};
+
 export type PublicHealthIntelligenceResponse = {
   meta: { assessmentCount: number; filters: OverviewMeta["filters"]; computedAt: string };
   pipelines: PipelineBundleDto[];
   sankey_links: Array<{ pipeline: string; source: string; target: string; value: number }>;
-  gaps: Record<string, unknown>;
-  correlation_engine: Record<string, unknown>;
-  cohorts: Record<string, unknown>;
-  time_series: Record<string, unknown>;
-  distributions: Record<string, unknown>;
-  multivariate: Record<string, unknown>;
-  kpis: Record<string, unknown>;
+  gaps: {
+    district_heatmap?: DistrictHeatmapRow[];
+  };
+  correlation_engine: {
+    presets?: Record<string, IntelligenceCorrelationPreset>;
+    extended_matrix?: IntelligenceCorrelationMatrixCell[];
+  };
+  cohorts: {
+    retention?: IntelligenceRetentionPoint[];
+  };
+  time_series: {
+    months?: string[];
+    hiv_screening_rate?: Array<number | null>;
+    hiv_ma3?: Array<number | null>;
+    lbw_rate?: Array<number | null>;
+    spikes?: {
+      hiv_screening_indices?: number[];
+      lbw_rate_indices?: number[];
+    };
+    trend?: {
+      hiv_screening?: string;
+      lbw?: string;
+    };
+  };
+  distributions: {
+    pregnancy_bmi_bands?: IntelligenceBmiBand[];
+    pregnancy_anemia_severity?: IntelligenceBmiBand[];
+    birth_weight_bands?: IntelligenceBmiBand[];
+  };
+  multivariate: {
+    bubbles?: IntelligenceBubblePoint[];
+    anc_ogtt_institutional?: IntelligenceScatterPoint[];
+  };
+  kpis: {
+    screening_coverage_hiv?: number | null;
+    treatment_success_proxy?: number | null;
+    lbw_rate?: number | null;
+    deltas_half_window?: { hiv_screening_pp?: number | null; lbw_rate_pp?: number | null };
+  };
   anomalies: Record<string, unknown>;
   cross_entity: Record<string, unknown>;
-  insights: Record<string, unknown>;
+  insights: {
+    pipelines?: IntelligenceNarrativeBlock;
+    gaps?: IntelligenceNarrativeBlock;
+    correlations?: IntelligenceNarrativeBlock;
+    cohorts?: IntelligenceNarrativeBlock;
+    trends?: IntelligenceNarrativeBlock;
+    anomalies?: IntelligenceNarrativeBlock;
+  };
 };
 
 export type AiIntelligenceInsightsResponse = {
@@ -356,4 +502,25 @@ export type ComparisonLabRunResponse = {
     df: number;
     pValue: number | null;
   } | null;
+};
+
+export type IngestionSchemaResponse = {
+  sections: Array<{
+    key: string;
+    label: string;
+    fields: Array<{
+      key: string;
+      type: "number" | "text";
+      defaultValue: number | string | null;
+    }>;
+  }>;
+};
+
+export type IngestionCreateResponse = {
+  id: string;
+  facilityId: string;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  updatedAt: string;
 };

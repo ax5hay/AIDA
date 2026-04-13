@@ -7,20 +7,58 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { emptySections } from "./defaults";
 
-function mergeSection<T extends Record<string, number | string | null>>(
+type Scalar = number | string | null;
+
+function ensureObject(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new BadRequestException(`${label} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function mergeSection<T extends Record<string, Scalar>>(
   base: T,
-  patch: Partial<T> | undefined,
+  patch: unknown,
+  label: string,
 ): T {
   if (!patch) return { ...base };
+  const input = ensureObject(patch, label);
   const out = { ...base };
-  for (const [k, v] of Object.entries(patch)) {
+  for (const [k, v] of Object.entries(input)) {
+    if (!(k in base)) {
+      throw new BadRequestException(`Unknown field in ${label}: ${k}`);
+    }
     if (v === undefined) continue;
-    if (typeof v === "number" && v < 0) {
-      throw new BadRequestException(`Negative count: ${k}`);
+    const expected = typeof base[k as keyof T];
+    if (expected === "number") {
+      if (typeof v !== "number" || !Number.isFinite(v) || v < 0) {
+        throw new BadRequestException(`Invalid non-negative number for ${label}.${k}`);
+      }
+      (out as Record<string, unknown>)[k] = v;
+      continue;
+    }
+    if (expected === "string") {
+      if (typeof v !== "string") {
+        throw new BadRequestException(`Invalid string for ${label}.${k}`);
+      }
+      (out as Record<string, unknown>)[k] = v;
+      continue;
+    }
+    if (v !== null && typeof v !== "string") {
+      throw new BadRequestException(`Invalid string/null for ${label}.${k}`);
     }
     (out as Record<string, unknown>)[k] = v;
   }
   return out;
+}
+
+function validateTopLevelPayload(body: IngestAssessmentBody): void {
+  const required = ["facilityId", "periodStart", "periodEnd"] as const;
+  for (const field of required) {
+    if (!body[field] || typeof body[field] !== "string") {
+      throw new BadRequestException(`${field} required`);
+    }
+  }
 }
 
 export type IngestAssessmentBody = {
@@ -43,9 +81,43 @@ export type IngestAssessmentBody = {
   documents?: Partial<typeof emptySections.documents>;
 };
 
+export type IngestionSchemaField = {
+  key: string;
+  type: "number" | "text";
+  defaultValue: number | string | null;
+};
+
+export type IngestionSchemaSection = {
+  key: keyof typeof emptySections;
+  label: string;
+  fields: IngestionSchemaField[];
+};
+
 @Injectable()
 export class IngestionService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private sectionLabel(key: string): string {
+    return key
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  getSchema(): { sections: IngestionSchemaSection[] } {
+    const sections = (Object.entries(emptySections) as Array<[keyof typeof emptySections, Record<string, Scalar>]>).map(
+      ([sectionKey, defaults]) => ({
+        key: sectionKey,
+        label: this.sectionLabel(sectionKey),
+        fields: Object.entries(defaults).map(([fieldKey, defaultValue]) => ({
+          key: fieldKey,
+          type: (typeof defaultValue === "number" ? "number" : "text") as "number" | "text",
+          defaultValue,
+        })),
+      }),
+    );
+    return { sections };
+  }
 
   private validateLogicalConsistency(
     pci: Record<string, number | string | null>,
@@ -82,10 +154,7 @@ export class IngestionService {
   }
 
   async createAssessment(body: IngestAssessmentBody) {
-    if (!body.facilityId) throw new BadRequestException("facilityId required");
-    if (!body.periodStart || !body.periodEnd) {
-      throw new BadRequestException("periodStart and periodEnd are required");
-    }
+    validateTopLevelPayload(body);
     const periodStart = new Date(body.periodStart);
     const periodEnd = new Date(body.periodEnd);
     if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
@@ -98,21 +167,56 @@ export class IngestionService {
     const facility = await this.prisma.facility.findUnique({ where: { id: body.facilityId } });
     if (!facility) throw new BadRequestException("facility not found");
 
-    const pci = mergeSection(emptySections.preconceptionWomenIdentified, body.preconceptionWomenIdentified);
-    const pint = mergeSection(emptySections.preconceptionInterventions, body.preconceptionInterventions);
-    const pcm = mergeSection(emptySections.preconceptionWomenManaged, body.preconceptionWomenManaged);
+    const existing = await this.prisma.chcAssessment.findFirst({
+      where: { facilityId: body.facilityId, periodStart, periodEnd },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        `Assessment already exists for facility and period window (id: ${existing.id})`,
+      );
+    }
+
+    const pci = mergeSection(
+      emptySections.preconceptionWomenIdentified,
+      body.preconceptionWomenIdentified,
+      "preconceptionWomenIdentified",
+    );
+    const pint = mergeSection(
+      emptySections.preconceptionInterventions,
+      body.preconceptionInterventions,
+      "preconceptionInterventions",
+    );
+    const pcm = mergeSection(
+      emptySections.preconceptionWomenManaged,
+      body.preconceptionWomenManaged,
+      "preconceptionWomenManaged",
+    );
     const pwr = mergeSection(
       emptySections.pregnantWomenRegisteredAndScreened,
       body.pregnantWomenRegisteredAndScreened,
+      "pregnantWomenRegisteredAndScreened",
     );
-    const pwi = mergeSection(emptySections.pregnantWomenIdentified, body.pregnantWomenIdentified);
-    const pwm = mergeSection(emptySections.pregnantWomenManaged, body.pregnantWomenManaged);
-    const hr = mergeSection(emptySections.highRiskPregnancy, body.highRiskPregnancy);
-    const del = mergeSection(emptySections.deliveryAndOutcomes, body.deliveryAndOutcomes);
-    const inf = mergeSection(emptySections.infants0To24Months, body.infants0To24Months);
-    const pn = mergeSection(emptySections.postnatalWomen, body.postnatalWomen);
-    const rem = { ...emptySections.remarks, ...body.remarks };
-    const docs = { ...emptySections.documents, ...body.documents };
+    const pwi = mergeSection(
+      emptySections.pregnantWomenIdentified,
+      body.pregnantWomenIdentified,
+      "pregnantWomenIdentified",
+    );
+    const pwm = mergeSection(
+      emptySections.pregnantWomenManaged,
+      body.pregnantWomenManaged,
+      "pregnantWomenManaged",
+    );
+    const hr = mergeSection(emptySections.highRiskPregnancy, body.highRiskPregnancy, "highRiskPregnancy");
+    const del = mergeSection(
+      emptySections.deliveryAndOutcomes,
+      body.deliveryAndOutcomes,
+      "deliveryAndOutcomes",
+    );
+    const inf = mergeSection(emptySections.infants0To24Months, body.infants0To24Months, "infants0To24Months");
+    const pn = mergeSection(emptySections.postnatalWomen, body.postnatalWomen, "postnatalWomen");
+    const rem = mergeSection(emptySections.remarks, body.remarks, "remarks");
+    const docs = mergeSection(emptySections.documents, body.documents, "documents");
 
     this.validateLogicalConsistency(
       pci as Record<string, number | string | null>,
@@ -125,8 +229,8 @@ export class IngestionService {
     return this.prisma.chcAssessment.create({
       data: {
         facilityId: body.facilityId,
-        periodStart: new Date(body.periodStart),
-        periodEnd: new Date(body.periodEnd),
+        periodStart,
+        periodEnd,
         preconceptionWomenIdentified: { create: pci },
         preconceptionInterventions: { create: pint },
         preconceptionWomenManaged: { create: pcm },

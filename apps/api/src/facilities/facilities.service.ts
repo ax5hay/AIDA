@@ -13,7 +13,10 @@ export class FacilitiesService {
   }
 
   async listDistricts(): Promise<string[]> {
-    const rows = await this.prisma.facility.findMany({ select: { district: true } });
+    const rows = await this.prisma.facility.findMany({
+      select: { district: true },
+      distinct: ["district"],
+    });
     return [...new Set(rows.map((r) => r.district))].sort((a, b) => a.localeCompare(b));
   }
 }

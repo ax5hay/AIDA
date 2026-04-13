@@ -27,6 +27,7 @@ import {
 
 const toc = [
   { id: "intro", label: "Introduction" },
+  { id: "reading-metrics", label: "Percentages & denominators" },
   { id: "filters", label: "Filters & URLs" },
   { id: "model", label: "Core tables" },
   { id: "sections", label: "Clinical sections (all columns)" },
@@ -107,6 +108,38 @@ export function HelpDocs({ className }: { className?: string }) {
         ))}
       </section>
 
+      <section id="reading-metrics" className="scroll-mt-28 space-y-4 text-sm leading-relaxed text-zinc-400">
+        <h2 className="text-lg font-semibold text-white">Reading percentages (client-friendly)</h2>
+        <p>
+          AIDA always ties a percentage to a **count you can audit**. If you only remember one rule: ask &quot;percent of
+          what?&quot;
+        </p>
+        <ul className="list-inside list-disc space-y-3">
+          <li>
+            <strong className="text-zinc-300">Program overview &amp; Analytics KPI cards</strong> — ANC screening (HIV, Hb×4,
+            BP, etc.) is &quot;test count ÷ Σ total_anc_registered&quot; summed across the filtered assessments. The UI shows
+            the numerator and denominator when available.
+          </li>
+          <li>
+            <strong className="text-zinc-300">Mortality &amp; adverse birth outcomes</strong> — maternal deaths, early neonatal
+            deaths, LBW, and preterm use **live births** as denominator where the engine defines a rate.
+          </li>
+          <li>
+            <strong className="text-zinc-300">Section page — “distribution” bars</strong> — percentages are the field’s share
+            of the **sum of all fields in that section** (workload mix), not automatically ANC coverage. Use the field metric
+            grid above for ANC-linked %.
+          </li>
+          <li>
+            <strong className="text-zinc-300">Correlations — before/after</strong> — splits the timeline at the midpoint for
+            exploratory discussion of programme timing; it does not prove causality.
+          </li>
+          <li>
+            <strong className="text-zinc-300">Comparison lab</strong> — each run states how many assessments were used and
+            which chart type was chosen; export CSV for stakeholder tables.
+          </li>
+        </ul>
+      </section>
+
       <section id="filters" className="scroll-mt-28">
         <h2 className="mt-14 text-lg font-semibold text-white">Filters & URL query params</h2>
         <p className="mt-3 text-sm text-zinc-400">
@@ -183,10 +216,13 @@ export function HelpDocs({ className }: { className?: string }) {
             skipped).
           </li>
           <li>
-            <strong className="text-zinc-300">fieldMetrics</strong> — absolute totals plus optional percentage. For{" "}
-            <code className="font-mono text-[12px]">pregnant_women_registered_and_screened</code> only, the denominator is the
-            summed <code className="font-mono text-[12px]">total_anc_registered</code> (so each screening count is shown as % of
-            total ANC registered across the window). Other sections have no denominator — the UI shows “—” for %.
+            <strong className="text-zinc-300">fieldMetrics</strong> — absolute totals plus percentage vs an explicit
+            denominator: for ANC registration, each screening field uses{" "}
+            <code className="font-mono text-[12px]">Σ total_anc_registered</code>; for identification / intervention / high-risk /
+            infants / postnatal, the denominator is <strong className="text-zinc-300">Σ all fields in that section</strong> (share
+            of workload mix). For <code className="font-mono text-[12px]">delivery_and_outcomes</code>, per-field rules apply
+            (e.g. deaths and LBW vs live births; delivery site fields vs Σ facility + other institutional + home). Each card can
+            include a short <code className="font-mono text-[12px]">denominatorNote</code>.
           </li>
           <li>
             <strong className="text-zinc-300">comparativeDistribution</strong> — each field’s share of the{" "}
@@ -217,7 +253,10 @@ export function HelpDocs({ className }: { className?: string }) {
         <h2 className="text-lg font-semibold text-white">Program overview payload</h2>
         <p>
           The overview endpoint aggregates the same filtered assessments and returns{" "}
-          <code className="font-mono text-[12px]">kpis</code> (screening rates, gaps, mortality, delivery, LBW, preterm), a{" "}
+          <code className="font-mono text-[12px]">meta</code> (assessment count, facility and district counts, min/max reporting
+          period), <code className="font-mono text-[12px]">corpus</code> (section presence counts, ANC numerators, outcome
+          denominators for transparent KPI math), <code className="font-mono text-[12px]">kpis</code> (screening rates, gaps,
+          mortality, delivery, LBW, preterm), a{" "}
           <code className="font-mono text-[12px]">funnel</code> (preconception identified/managed, interventions object, pregnancy
           registered/identified/managed, outcome death counts), <code className="font-mono text-[12px]">alerts</code> when
           rule thresholds fire, and <code className="font-mono text-[12px]">validation.issues</code>.
@@ -253,7 +292,12 @@ export function HelpDocs({ className }: { className?: string }) {
             <strong className="text-zinc-300">Anomalies</strong> — z-scores on per-assessment{" "}
             <code className="font-mono text-[12px]">live_births</code> or{" "}
             <code className="font-mono text-[12px]">maternal_deaths</code>; flags when{" "}
-            <code className="font-mono text-[12px]">|z| &gt; 2.5</code>.
+            <code className="font-mono text-[12px]">|z| &gt; 2.5</code>. API responses include pagination metadata (page,
+            pageSize, total).
+          </li>
+          <li>
+            <strong className="text-zinc-300">Intervention comparison (correlations)</strong> — same Pearson constructs, split at
+            the midpoint of the filtered timeline for early vs later reporting periods (exploratory).
           </li>
           <li>
             <strong className="text-zinc-300">Public health intelligence</strong> —{" "}

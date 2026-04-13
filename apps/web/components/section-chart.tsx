@@ -68,6 +68,11 @@ export function SectionLineChart({
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+      <p className="mb-3 text-xs text-zinc-500">
+        <span className="font-medium text-zinc-300">What this is:</span> Time-series trend chart.{" "}
+        <span className="font-medium text-zinc-300">What it does:</span> plots how each selected field changes over
+        monthly periods for your active filters.
+      </p>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500">{title}</p>
         {series.length > maxLines ? (
@@ -98,8 +103,6 @@ export function SectionLineChart({
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: 8,
                 fontSize: 11,
-                maxHeight: 280,
-                overflowY: "auto",
               }}
             />
             <Legend

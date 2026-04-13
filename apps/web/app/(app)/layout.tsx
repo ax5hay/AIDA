@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-import { AppNav } from "@/components/app-nav";
+import { AppNav, APP_SIDEBAR_WIDTH_CLASS } from "@/components/app-nav";
 import { DecisionSupportDock } from "@/components/decision-support-dock";
 
 function NavWithSuspense() {
@@ -25,7 +25,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         }
       >
-        <div className="pb-[calc(11rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]">
+        <div
+          className={`pb-[calc(11rem+env(safe-area-inset-bottom,0px))] md:pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] ${APP_SIDEBAR_WIDTH_CLASS}`}
+        >
           {children}
         </div>
       </Suspense>

@@ -77,6 +77,7 @@ export function AnalyticsSuite({
   });
 
   const d = overview.data;
+  const corpus = d?.corpus;
   const sr = d?.kpis.screening_rates;
   const funnel = d?.funnel;
 
@@ -105,7 +106,10 @@ export function AnalyticsSuite({
       : [];
 
   const matrix = corr.data?.matrix ?? [];
-  const names = [...new Set(matrix.map((c) => c.row))].sort((a, b) => a.localeCompare(b));
+  const names = [...new Set(matrix.flatMap((c) => [c.row, c.col]))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  const matrixLookup = new Map(matrix.map((cell) => [`${cell.row}::${cell.col}`, cell.r]));
 
   const xsAncHgb =
     cross.data?.ancHgb.map((p) => ({
@@ -137,7 +141,58 @@ export function AnalyticsSuite({
 
   return (
     <div className="min-w-0 space-y-14">
-      <PublicHealthIntelligenceLoader filters={filters} filtersKey={filtersKey} />
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl border border-indigo-500/25 bg-gradient-to-br from-indigo-950/30 to-transparent p-5 sm:p-6"
+      >
+        <h2 className="text-sm font-medium uppercase tracking-[0.14em] text-indigo-300/90">
+          Analytics overview (full corpus in filter)
+        </h2>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
+          This page is not limited to one clinical chapter: it pulls the same filtered{" "}
+          <strong className="font-medium text-zinc-200">ChcAssessment</strong> rows used everywhere else — all linked
+          section tables contribute to intelligence, rollups, scatters, and the matrix below. Percentages in the evidence
+          panel use explicit denominators (Σ ANC or live births) as labeled.
+        </p>
+        {corpus && d ? (
+          <ul className="mt-4 grid gap-2 text-xs text-zinc-500 sm:grid-cols-2 lg:grid-cols-3">
+            <li>
+              <span className="text-zinc-600">Facilities · districts · assessments:</span>{" "}
+              <span className="font-mono text-zinc-300">
+                {d.meta.facilityCount} · {d.meta.districtCount} · {d.meta.assessmentCount}
+              </span>
+            </li>
+            <li>
+              <span className="text-zinc-600">Σ ANC registered (pooled):</span>{" "}
+              <span className="font-mono text-zinc-300">{corpus.ancNumerators.denominator_total_anc_registered}</span>
+            </li>
+            <li>
+              <span className="text-zinc-600">Districts in rollup chart:</span>{" "}
+              <span className="font-mono text-zinc-300">{rollup.data?.length ?? "…"}</span>
+            </li>
+            <li>
+              <span className="text-zinc-600">Live births / maternal deaths (sums):</span>{" "}
+              <span className="font-mono text-zinc-300">
+                {corpus.outcomeDenominators.live_births} / {corpus.outcomeDenominators.maternal_deaths}
+              </span>
+            </li>
+          </ul>
+        ) : null}
+      </motion.section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-[0.14em] text-zinc-500">
+          Module A — Public health intelligence
+        </h2>
+        <p className="max-w-3xl text-sm text-zinc-500">
+          <span className="font-medium text-zinc-300">What it is:</span> Deterministic pipelines (gaps, cohorts,
+          correlations, anomalies) built from all section fields in the filter.{" "}
+          <span className="font-medium text-zinc-300">What it does:</span> Surfaces programme-wide patterns and
+          district-level heat without an LLM.
+        </p>
+        <PublicHealthIntelligenceLoader filters={filters} filtersKey={filtersKey} />
+      </section>
 
       <motion.section
         initial={{ opacity: 0, y: 10 }}
@@ -145,14 +200,15 @@ export function AnalyticsSuite({
         className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6"
       >
         <h2 className="text-sm font-medium uppercase tracking-[0.14em] text-cyan-400/90">
-          Evidence panel (rule-based)
+          Module B — Evidence panel (rule-based KPIs)
         </h2>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
-          Aggregated from the same filtered assessment rows as Program overview: ANC screening numerators over{" "}
+          <span className="font-medium text-zinc-300">What it is:</span> Aggregated KPI cards and thresholds.{" "}
+          <span className="font-medium text-zinc-300">What it does:</span> Shows ANC screening numerators over{" "}
           <code className="rounded bg-white/5 px-1 font-mono text-[13px] text-zinc-300">total_anc_registered</code>,
           mortality and delivery mix from{" "}
-          <code className="rounded bg-white/5 px-1 font-mono text-[13px] text-zinc-300">delivery_and_outcomes</code>,
-          and management gaps from identified vs managed cohort tables. No LLM; no synthetic rows.
+          <code className="rounded bg-white/5 px-1 font-mono text-[13px] text-zinc-300">delivery_and_outcomes</code>, and
+          management gaps from identified vs managed cohort tables. No LLM; no synthetic rows.
         </p>
         {overview.isLoading ? (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -164,27 +220,76 @@ export function AnalyticsSuite({
           <>
             <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard label="Assessments in filter" value={String(d.meta.assessmentCount)} hint="Row count" />
-              <MetricCard label="HIV / ANC" value={pct(sr?.screening_rate_hiv)} hint="hiv_tested ÷ total_anc" />
-              <MetricCard label="Hb ×4 / ANC" value={pct(sr?.screening_rate_hgb_4x)} hint="hemoglobin_tested_4_times" />
-              <MetricCard label="BP / ANC" value={pct(sr?.screening_rate_bp)} hint="blood_pressure_checked" />
-              <MetricCard label="CBC / ANC" value={pct(sr?.screening_rate_cbc)} />
-              <MetricCard label="OGTT / ANC" value={pct(sr?.screening_rate_ogtt)} />
-              <MetricCard label="Syphilis / ANC" value={pct(sr?.screening_rate_syphilis)} />
-              <MetricCard label="TSH / ANC" value={pct(sr?.screening_rate_tsh)} />
-              <MetricCard label="Urine / ANC" value={pct(sr?.screening_rate_urine)} />
-              <MetricCard label="Blood grouping / ANC" value={pct(sr?.screening_rate_blood_grouping)} />
+              <MetricCard
+                label="HIV / ANC"
+                value={pct(sr?.screening_rate_hiv)}
+                denominator={`${d.corpus.ancNumerators.hiv_tested} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+                hint="hiv_tested ÷ Σ total_anc"
+              />
+              <MetricCard
+                label="Hb ×4 / ANC"
+                value={pct(sr?.screening_rate_hgb_4x)}
+                denominator={`${d.corpus.ancNumerators.hemoglobin_tested_4_times} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+                hint="hemoglobin_tested_4_times ÷ Σ ANC"
+              />
+              <MetricCard
+                label="BP / ANC"
+                value={pct(sr?.screening_rate_bp)}
+                denominator={`${d.corpus.ancNumerators.blood_pressure_checked} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
+              <MetricCard
+                label="CBC / ANC"
+                value={pct(sr?.screening_rate_cbc)}
+                denominator={`${d.corpus.ancNumerators.cbc_tested} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
+              <MetricCard
+                label="OGTT / ANC"
+                value={pct(sr?.screening_rate_ogtt)}
+                denominator={`${d.corpus.ancNumerators.gdm_ogtt_tested} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
+              <MetricCard
+                label="Syphilis / ANC"
+                value={pct(sr?.screening_rate_syphilis)}
+                denominator={`${d.corpus.ancNumerators.syphilis_tested} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
+              <MetricCard
+                label="TSH / ANC"
+                value={pct(sr?.screening_rate_tsh)}
+                denominator={`${d.corpus.ancNumerators.thyroid_tsh_tested} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
+              <MetricCard
+                label="Urine / ANC"
+                value={pct(sr?.screening_rate_urine)}
+                denominator={`${d.corpus.ancNumerators.urine_routine_microscopy} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
+              <MetricCard
+                label="Blood grouping / ANC"
+                value={pct(sr?.screening_rate_blood_grouping)}
+                denominator={`${d.corpus.ancNumerators.blood_grouping} / ${d.corpus.ancNumerators.denominator_total_anc_registered}`}
+              />
               <MetricCard
                 label="Maternal deaths / live births"
                 value={d.kpis.mortality_rate_maternal_per_live_birth?.toFixed(5) ?? "n/a"}
-                hint="delivery_and_outcomes"
+                denominator={`${d.corpus.outcomeDenominators.maternal_deaths} / ${d.corpus.outcomeDenominators.live_births}`}
+                hint="rate = maternal_deaths ÷ live_births"
               />
               <MetricCard
                 label="Early neonatal deaths / live births"
                 value={d.kpis.early_neonatal_mortality_rate_per_live_birth?.toFixed(5) ?? "n/a"}
+                denominator={`${d.corpus.outcomeDenominators.early_neonatal_deaths_lt_24hrs} / ${d.corpus.outcomeDenominators.live_births}`}
               />
               <MetricCard label="Institutional delivery ratio" value={pct(d.kpis.institutional_delivery_ratio)} />
-              <MetricCard label="LBW / live births" value={pct(d.kpis.lbw_rate)} hint="lbw_lt_2500g" />
-              <MetricCard label="Preterm / live births" value={pct(d.kpis.preterm_rate)} />
+              <MetricCard
+                label="LBW / live births"
+                value={pct(d.kpis.lbw_rate)}
+                denominator={`${d.corpus.outcomeDenominators.lbw_lt_2500g} / ${d.corpus.outcomeDenominators.live_births}`}
+                hint="lbw_lt_2500g ÷ live_births"
+              />
+              <MetricCard
+                label="Preterm / live births"
+                value={pct(d.kpis.preterm_rate)}
+                denominator={`${d.corpus.outcomeDenominators.preterm_births_lt_37_weeks} / ${d.corpus.outcomeDenominators.live_births}`}
+              />
               <MetricCard
                 label="Validation flags (rows)"
                 value={String(d.validation.issues.length)}
@@ -203,6 +308,9 @@ export function AnalyticsSuite({
         )}
       </motion.section>
 
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-600">
+        Module C — District rollup (all facilities rolled to district)
+      </p>
       {/* District: same denominator (ANC) for two screening rates */}
       <ChartCard
         title="District screening intensity (ANC-based)"
@@ -272,6 +380,9 @@ export function AnalyticsSuite({
         )}
       </ChartCard>
 
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-600">
+        Module D — Paired-field scatter plots (assessment-level)
+      </p>
       <section className="grid gap-6 lg:grid-cols-2">
         <ChartCard
           title="ANC volume vs Hb×4 capture (same row)"
@@ -335,6 +446,9 @@ export function AnalyticsSuite({
         </ChartCard>
       </section>
 
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-600">
+        Module E — Compact correlation matrix (engineered series)
+      </p>
       <ChartCard
         title="Engineered-series correlation matrix"
         subtitle="Same Pearson matrix as Correlations: anemia_pre, bmi_pre, anemia_preg, bmi_preg, live_births — comparable cohort constructs from the analytics engine."
@@ -361,8 +475,7 @@ export function AnalyticsSuite({
                   <tr key={row} className="border-b border-white/5">
                     <td className="p-2 font-mono text-[10px] text-zinc-400">{row}</td>
                     {names.map((col) => {
-                      const cell = matrix.find((c) => c.row === row && c.col === col);
-                      const r = cell?.r;
+                      const r = matrixLookup.get(`${row}::${col}`);
                       const heat =
                         r === null || r === undefined
                           ? "bg-transparent"
@@ -392,11 +505,22 @@ export function AnalyticsSuite({
   );
 }
 
-function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+  denominator,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  denominator?: string;
+}) {
   return (
     <li className="rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-zinc-200">
       <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">{label}</span>
       <p className="mt-1 font-mono text-base text-white">{value}</p>
+      {denominator ? <p className="mt-1 font-mono text-[10px] text-zinc-500">{denominator}</p> : null}
       {hint ? <p className="mt-1 text-[10px] text-zinc-600">{hint}</p> : null}
     </li>
   );

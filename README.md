@@ -81,7 +81,15 @@ chmod +x run.sh
 | Web | [http://localhost:3000](http://localhost:3000) |
 | API health | [http://localhost:4000/v1/metrics/health](http://localhost:4000/v1/metrics/health) |
 
-First image build can take a few minutes (`npm install` inside the Dockerfile). After that, layer cache usually wins. Tail logs with `docker compose logs -f`, tear down with `docker compose down`.
+First image build can take a few minutes. Dockerfiles are cache-friendly (`npm ci` + lockfile), so subsequent builds are much faster when dependency manifests do not change.
+
+By default, API startup **does not seed**. If you need synthetic data:
+
+```bash
+./scripts/seed-data.sh
+```
+
+Tail logs with `docker compose logs -f`, tear down with `docker compose down`.
 
 ---
 
@@ -106,7 +114,7 @@ Run these from the **repository root**:
 | 1. Install | `npm install` |
 | 2. Env | Copy `.env.example` → `.env`. Set at least `DATABASE_URL` for Prisma. |
 | 3. Client + schema | `npm run db:generate` then `npm run db:push` |
-| 4. Seed | `npm run db:seed` (synthetic but logically consistent counts) |
+| 4. Seed | `npm run db:seed` (synthetic but logically consistent counts, optional if DB already has data) |
 | 5. Build | `npm run build` (packages then apps) |
 | 6. API | `npm run dev:api` → default base `http://localhost:4000/v1` |
 | 7. Web | `npm run dev:web` → `http://localhost:3000` |

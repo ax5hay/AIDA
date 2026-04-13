@@ -6,12 +6,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 
 WORKDIR /app
 
-COPY package.json tsconfig.base.json ./
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages/db/package.json ./packages/db/package.json
+COPY packages/analytics-engine/package.json ./packages/analytics-engine/package.json
+COPY packages/ml-engine/package.json ./packages/ml-engine/package.json
+COPY packages/ai-engine/package.json ./packages/ai-engine/package.json
+
+RUN npm ci --no-audit --no-fund
+
 COPY apps ./apps
 COPY packages ./packages
 COPY docker ./docker
-
-RUN npm install
 
 WORKDIR /app/packages/db
 RUN npx prisma generate

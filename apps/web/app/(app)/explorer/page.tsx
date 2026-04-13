@@ -7,20 +7,31 @@ import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
 export default function ExplorerPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? "200") || 200);
   const qs = searchParams.toString();
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
 
   const q = useQuery({
-    queryKey: ["explorer", filtersKey],
-    queryFn: ({ signal }) => getExplorer(filters, signal),
+    queryKey: ["explorer", filtersKey, page, pageSize],
+    queryFn: ({ signal }) => getExplorer(filters, { page, pageSize, signal }),
     ...analyticsFilteredQuery,
   });
+
+  const setPage = (nextPage: number) => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("page", String(nextPage));
+    p.set("pageSize", String(pageSize));
+    router.replace(`${pathname}?${p.toString()}`);
+  };
 
   return (
     <PageShell
@@ -37,7 +48,9 @@ export default function ExplorerPage() {
       ) : q.data ? (
         <div className="space-y-4">
           <p className="text-sm text-zinc-400">
-            Showing <span className="font-mono text-white">{q.data.meta.totalCount}</span> assessments
+            Showing page <span className="font-mono text-white">{q.data.meta.page}</span> of{" "}
+            <span className="font-mono text-white">{q.data.meta.totalPages}</span> · total{" "}
+            <span className="font-mono text-white">{q.data.meta.totalCount}</span> assessments
             {JSON.stringify(q.data.meta.filters) !== "{}" ? (
               <span className="text-zinc-500"> · filters {JSON.stringify(q.data.meta.filters)}</span>
             ) : null}
@@ -102,6 +115,24 @@ export default function ExplorerPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage(Math.max(1, q.data.meta.page - 1))}
+              disabled={q.data.meta.page <= 1}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-200 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage(q.data.meta.page + 1)}
+              disabled={!q.data.meta.hasMore}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-200 disabled:opacity-40"
+            >
+              Next
+            </button>
           </div>
         </div>
       ) : null}

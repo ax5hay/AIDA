@@ -7,6 +7,7 @@ import { getDecisionSupport } from "@/lib/api";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
 import { cn } from "@aida/ui";
+import { APP_SIDEBAR_WIDTH_CLASS } from "@/components/app-nav";
 
 type Tab = "actions" | "score" | "alerts" | "whatif" | "quality" | "compare" | "story";
 
@@ -37,7 +38,7 @@ export function DecisionSupportDock() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 z-[65] flex justify-center px-2 pt-1 sm:px-4 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-0"
+      className={`pointer-events-none fixed inset-x-0 z-[65] flex justify-center px-2 pt-1 sm:px-4 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-0 ${APP_SIDEBAR_WIDTH_CLASS}`}
     >
       <div className="pointer-events-auto w-full max-w-4xl">
         <button

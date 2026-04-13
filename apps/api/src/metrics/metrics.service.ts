@@ -14,7 +14,7 @@ export class MetricsService {
     const [facilities, assessments, districtRows] = await Promise.all([
       this.prisma.facility.count(),
       this.prisma.chcAssessment.count(),
-      this.prisma.facility.findMany({ select: { district: true } }),
+      this.prisma.facility.findMany({ select: { district: true }, distinct: ["district"] }),
     ]);
     const districts = [...new Set(districtRows.map((r) => r.district))].sort((a, b) =>
       a.localeCompare(b),

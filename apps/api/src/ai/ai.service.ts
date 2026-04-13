@@ -5,6 +5,14 @@ import { AiInsightClient, loadAiConfigFromEnv, normalizeLmStudioBaseUrl } from "
 export class AiService {
   private readonly log = new Logger(AiService.name);
   private readonly client = new AiInsightClient(loadAiConfigFromEnv());
+  private readonly maxPromptChars = Number(process.env.AI_PROMPT_MAX_CHARS ?? 30_000);
+  private readonly modelListTimeoutMs = Number(process.env.AI_MODEL_LIST_TIMEOUT_MS ?? 4_000);
+
+  private snapshotText(payload: unknown): string {
+    const raw = JSON.stringify(payload);
+    if (raw.length <= this.maxPromptChars) return raw;
+    return `${raw.slice(0, this.maxPromptChars)}\n...[truncated]`;
+  }
 
   isEnabled(): boolean {
     return this.client.isEnabled();
@@ -20,7 +28,11 @@ export class AiService {
       return { data: [] };
     }
     try {
-      const res = await fetch(`${base}/models`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.modelListTimeoutMs);
+      const res = await fetch(`${base}/models`, { signal: controller.signal }).finally(() =>
+        clearTimeout(timeout),
+      );
       if (!res.ok) {
         const t = await res.text();
         this.log.warn(`LM Studio /models HTTP ${res.status}: ${t.slice(0, 120)}`);
@@ -51,7 +63,7 @@ export class AiService {
           },
           {
             role: "user",
-            content: `Analyze this JSON snapshot and recommend next actions:\n${JSON.stringify(payload)}`,
+            content: `Analyze this JSON snapshot and recommend next actions:\n${this.snapshotText(payload)}`,
           },
         ],
         { model: model?.trim() || undefined },
@@ -97,7 +109,7 @@ export class AiService {
           },
           {
             role: "user",
-            content: `Analyze this public health intelligence snapshot:\n${JSON.stringify(snapshot)}`,
+            content: `Analyze this public health intelligence snapshot:\n${this.snapshotText(snapshot)}`,
           },
         ],
         { model: model?.trim() || undefined },

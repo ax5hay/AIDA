@@ -3,9 +3,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Area,
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
@@ -121,6 +123,372 @@ function exportCsv(filename: string, rows: Array<Record<string, string | number>
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function numStats(xs: number[]) {
+  if (xs.length === 0) return null;
+  const sorted = [...xs].sort((a, b) => a - b);
+  const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const v = xs.length > 1 ? xs.reduce((s, x) => s + (x - mean) ** 2, 0) / (xs.length - 1) : 0;
+  return { mean, std: Math.sqrt(v), min: sorted[0]!, max: sorted[sorted.length - 1]! };
+}
+
+function StakeholderReport({ data }: { data: ComparisonLabRunResponse }) {
+  const stats = data.stats as Record<string, unknown>;
+  const pearson =
+    typeof stats.pearsonR === "number"
+      ? stats.pearsonR
+      : typeof stats.pearson === "number"
+        ? stats.pearson
+        : null;
+  const spearman = typeof stats.spearman === "number" ? stats.spearman : null;
+  const regression = stats.regression as { slope?: number; intercept?: number } | undefined;
+
+  return (
+    <div className="space-y-6 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent p-5 sm:p-6">
+      <div>
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-amber-300/90">Stakeholder report</p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Plain-language summary you can read in a meeting. Technical detail stays in the chart and raw stats below.
+        </p>
+      </div>
+
+      <section className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-4">
+        <h3 className="text-sm font-medium text-amber-100/90">Executive summary</h3>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-300">{data.insight}</p>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-black/25 p-4">
+          <h3 className="text-xs font-medium uppercase text-zinc-500">What was compared</h3>
+          <dl className="mt-3 space-y-2 text-sm text-zinc-300">
+            <div className="flex justify-between gap-4">
+              <dt className="text-zinc-500">Metric A</dt>
+              <dd className="text-right font-mono text-xs text-cyan-300/90">{data.metricA.label}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-zinc-500">Metric B</dt>
+              <dd className="text-right font-mono text-xs text-cyan-300/90">{data.metricB.label}</dd>
+            </div>
+            {data.metricC ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-zinc-500">Metric C</dt>
+                <dd className="text-right font-mono text-xs text-cyan-300/90">{data.metricC.label}</dd>
+              </div>
+            ) : null}
+            <div className="flex justify-between gap-4 border-t border-white/5 pt-2">
+              <dt className="text-zinc-500">Assessments used</dt>
+              <dd className="font-mono text-white">{data.nRows}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-zinc-500">Visualization</dt>
+              <dd className="font-mono text-xs text-zinc-400">{data.chartKind.replace(/_/g, " ")}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/25 p-4">
+          <h3 className="text-xs font-medium uppercase text-zinc-500">Key numbers</h3>
+          <ul className="mt-3 space-y-2 text-sm text-zinc-400">
+            {pearson !== null ? (
+              <li>
+                Pearson correlation: <span className="font-mono text-zinc-200">{pearson.toFixed(4)}</span>
+              </li>
+            ) : null}
+            {spearman !== null ? (
+              <li>
+                Spearman correlation: <span className="font-mono text-zinc-200">{spearman.toFixed(4)}</span>
+              </li>
+            ) : null}
+            {regression && Number.isFinite(regression.slope) ? (
+              <li>
+                Line slope (OLS): <span className="font-mono text-zinc-200">{regression.slope!.toFixed(4)}</span>
+              </li>
+            ) : null}
+            {data.contingency && data.contingency.pValue != null ? (
+              <li>
+                Chi-square p-value:{" "}
+                <span className="font-mono text-zinc-200">{data.contingency.pValue.toFixed(4)}</span> (categories are
+                independent if p is large)
+              </li>
+            ) : null}
+            {!pearson && !spearman && !regression?.slope && !data.contingency ? (
+              <li className="text-zinc-600">Open “Raw stats” below for full figures.</li>
+            ) : null}
+          </ul>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-xs text-zinc-500">
+        <p className="font-medium text-zinc-400">Reading the chart</p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>
+            Scatter or bubble: each dot is one assessment in your current date/district filters — not a person-level
+            longitudinal trace.
+          </li>
+          <li>Bars or lines: axis labels match the metrics above; hover tooltips show exact values.</li>
+          <li>Use Export CSV when stakeholders ask for the underlying rows.</li>
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+/** Extra labelled figures: distribution summaries, sample sizes, and derived scalar views */
+function ComparisonLabDerivedFigures({ data }: { data: ComparisonLabRunResponse }) {
+  const kind = data.chartKind;
+  const stats = data.stats as Record<string, unknown>;
+  const pearsonR =
+    typeof stats.pearsonR === "number"
+      ? stats.pearsonR
+      : typeof stats.pearson === "number"
+        ? stats.pearson
+        : null;
+
+  if ((kind === "scatter_regression" || kind === "bubble_3d") && data.scatter?.length) {
+    const pts = data.scatter;
+    const sx = numStats(pts.map((p) => p.x));
+    const sy = numStats(pts.map((p) => p.y));
+    const sz =
+      kind === "bubble_3d" && pts.some((p) => p.z != null) ? numStats(pts.map((p) => p.z ?? 0)) : null;
+    const meanRows = [
+      { label: data.metricA.shortLabel, value: sx?.mean ?? 0 },
+      { label: data.metricB.shortLabel, value: sy?.mean ?? 0 },
+      ...(sz && data.metricC ? [{ label: data.metricC.shortLabel, value: sz.mean }] : []),
+    ];
+    const cov =
+      pts.length > 1 && sx && sy
+        ? pts.reduce((s, p) => s + (p.x - sx.mean) * (p.y - sy.mean), 0) / (pts.length - 1)
+        : null;
+
+    return (
+      <div className="space-y-6 pt-2">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-300/90">
+            Derived figures — distribution summary
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Computed in the browser from the same points as the main chart. Covariance uses sample covariance (n−1).
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="h-56 w-full min-w-0 rounded-xl border border-white/10 bg-black/20 p-3">
+            <p className="mb-2 text-[10px] font-medium uppercase text-zinc-500">Means (magnitude comparison)</p>
+            <ResponsiveContainer width="100%" height="85%">
+              <BarChart data={meanRows} margin={{ left: 4, right: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis dataKey="label" {...CHART_AXIS} interval={0} angle={-25} textAnchor="end" height={64} />
+                <YAxis {...CHART_AXIS} />
+                <Tooltip {...TOOLTIP_PROPS} formatter={(v: number) => [v.toFixed(2), "Mean"]} />
+                <Bar dataKey="value" fill="#a78bfa" radius={[4, 4, 0, 0]} name="Mean" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
+            <p className="text-[10px] font-medium uppercase text-zinc-500">Numeric summary</p>
+            <table className="mt-3 w-full border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-zinc-500">
+                  <th className="py-1 pr-2">Metric</th>
+                  <th className="py-1 pr-2">Min</th>
+                  <th className="py-1 pr-2">Max</th>
+                  <th className="py-1 pr-2">Mean</th>
+                  <th className="py-1">Std dev</th>
+                </tr>
+              </thead>
+              <tbody className="text-zinc-300">
+                <tr className="border-b border-white/5">
+                  <td className="py-1.5 font-mono text-[10px] text-cyan-400/90">{data.metricA.shortLabel}</td>
+                  <td className="font-mono">{sx?.min.toFixed(2)}</td>
+                  <td className="font-mono">{sx?.max.toFixed(2)}</td>
+                  <td className="font-mono">{sx?.mean.toFixed(2)}</td>
+                  <td className="font-mono">{sx?.std.toFixed(2)}</td>
+                </tr>
+                <tr className="border-b border-white/5">
+                  <td className="py-1.5 font-mono text-[10px] text-fuchsia-400/90">{data.metricB.shortLabel}</td>
+                  <td className="font-mono">{sy?.min.toFixed(2)}</td>
+                  <td className="font-mono">{sy?.max.toFixed(2)}</td>
+                  <td className="font-mono">{sy?.mean.toFixed(2)}</td>
+                  <td className="font-mono">{sy?.std.toFixed(2)}</td>
+                </tr>
+                {sz && data.metricC ? (
+                  <tr>
+                    <td className="py-1.5 font-mono text-[10px] text-emerald-400/90">{data.metricC.shortLabel}</td>
+                    <td className="font-mono">{sz.min.toFixed(2)}</td>
+                    <td className="font-mono">{sz.max.toFixed(2)}</td>
+                    <td className="font-mono">{sz.mean.toFixed(2)}</td>
+                    <td className="font-mono">{sz.std.toFixed(2)}</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+            {cov != null && Number.isFinite(cov) ? (
+              <p className="mt-3 text-[11px] text-zinc-500">
+                Sample covariance (A,B): <span className="font-mono text-zinc-300">{cov.toFixed(4)}</span>
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {pearsonR != null && Number.isFinite(pearsonR) ? (
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <p className="text-[10px] font-medium uppercase text-zinc-500">Pearson r (linear association)</p>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="relative h-3 flex-1 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="absolute inset-y-0 w-px bg-white/40"
+                  style={{ left: "50%", transform: "translateX(-50%)" }}
+                />
+                <div
+                  className="absolute inset-y-0 rounded-full bg-gradient-to-r from-rose-500/80 via-zinc-600 to-emerald-500/80"
+                  style={{
+                    left: `${((pearsonR + 1) / 2) * 100}%`,
+                    width: "6px",
+                    marginLeft: "-3px",
+                  }}
+                />
+              </div>
+              <span className="font-mono text-sm tabular-nums text-cyan-300/90">{pearsonR.toFixed(3)}</span>
+            </div>
+            <p className="mt-2 text-[10px] text-zinc-600">−1 (negative) ← → +1 (positive). Marker shows r.</p>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (kind === "line_trend" && data.lineSeries?.length) {
+    const chartData = data.lineSeries.map((p) => ({
+      period: p.period.length > 12 ? p.period.slice(0, 10) + "…" : p.period,
+      yMean: p.yMean,
+      n: p.n,
+    }));
+    return (
+      <div className="space-y-4 pt-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-300/90">
+          Derived figures — trend & sample depth
+        </p>
+        <div className="h-72 w-full min-w-0 rounded-xl border border-white/10 bg-black/20 p-3">
+          <p className="mb-1 text-[10px] text-zinc-500">Mean value (line) and assessments per period (shaded area)</p>
+          <ResponsiveContainer width="100%" height="90%">
+            <ComposedChart data={chartData} margin={{ left: 4, right: 12, bottom: 48 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="period" {...CHART_AXIS} angle={-22} textAnchor="end" height={52} />
+              <YAxis yAxisId="left" {...CHART_AXIS} />
+              <YAxis yAxisId="right" orientation="right" {...CHART_AXIS} />
+              <Tooltip {...TOOLTIP_PROPS} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <Area
+                yAxisId="right"
+                type="monotone"
+                dataKey="n"
+                name="n per period"
+                fill="rgba(167,139,250,0.25)"
+                stroke="#a78bfa"
+                strokeWidth={1}
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="yMean"
+                name="Mean"
+                stroke="#22d3ee"
+                strokeWidth={2}
+                dot
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "bar_groups" && data.barGroups?.length) {
+    const rows = data.barGroups.map((g) => ({
+      name: g.key.slice(0, 18),
+      mean: g.mean,
+      n: g.n,
+      std: g.std,
+    }));
+    return (
+      <div className="space-y-4 pt-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-300/90">
+          Derived figures — category statistics
+        </p>
+        <div className="h-64 w-full overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-3">
+          <ResponsiveContainer width={Math.max(400, rows.length * 72)} height="100%">
+            <BarChart data={rows} margin={{ left: 4, right: 8, bottom: 48 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="name" {...CHART_AXIS} interval={0} angle={-30} textAnchor="end" height={70} />
+              <YAxis {...CHART_AXIS} />
+              <Tooltip
+                {...TOOLTIP_PROPS}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0]?.payload as { mean: number; n: number; std: number };
+                  return (
+                    <div className="rounded-lg border border-white/10 bg-[#0c0d12] px-3 py-2 text-xs text-zinc-200">
+                      <p className="font-mono text-[10px] text-zinc-500">Mean {p.mean.toFixed(2)}</p>
+                      <p>n = {p.n}</p>
+                      <p>σ = {p.std.toFixed(2)}</p>
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="mean" fill="#34d399" name="Mean" radius={[4, 4, 0, 0]}>
+                {rows.map((_, i) => (
+                  <Cell key={i} fill={`hsl(${160 + (i * 15) % 80}, 55%, 45%)`} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "contingency_heatmap" && data.contingency) {
+    const { aKeys, bKeys, counts } = data.contingency;
+    const rowTotals = aKeys.map((_, i) => counts[i]!.reduce((s, v) => s + v, 0));
+    const colTotals = bKeys.map((_, j) => counts.reduce((s, row) => s + (row[j] ?? 0), 0));
+    const grand = rowTotals.reduce((a, b) => a + b, 0) || 1;
+    const rowBar = aKeys.map((a, i) => ({
+      label: a.slice(0, 14),
+      pct: (rowTotals[i]! / grand) * 100,
+    }));
+    return (
+      <div className="space-y-4 pt-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-violet-300/90">
+          Derived figures — margin distributions
+        </p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="h-52 rounded-xl border border-white/10 bg-black/20 p-3">
+            <p className="mb-2 text-[10px] text-zinc-500">Row margin (% of total count)</p>
+            <ResponsiveContainer width="100%" height="85%">
+              <BarChart data={rowBar} layout="vertical" margin={{ left: 8, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis type="number" {...CHART_AXIS} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="label" width={88} {...CHART_AXIS} tick={{ fontSize: 9 }} />
+                <Tooltip {...TOOLTIP_PROPS} formatter={(v: number) => [`${v.toFixed(1)}%`, "Share"]} />
+                <Bar dataKey="pct" fill="#22d3ee" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-zinc-400">
+            <p className="font-medium text-zinc-300">Column totals (for balance check)</p>
+            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto font-mono text-[10px]">
+              {bKeys.map((b, j) => (
+                <li key={b}>
+                  {b.slice(0, 20)}: <span className="text-zinc-200">{colTotals[j]}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function RunCharts({ data }: { data: ComparisonLabRunResponse }) {
@@ -407,6 +775,10 @@ export function ComparisonLabPage() {
       title="Comparison Lab"
       eyebrow="Intelligent analysis assistant"
       subtitle="Choose metrics A and B (optional C for a three-variable bubble). The engine only allows linked entities, matching aggregation levels, and statistically meaningful pairings — then picks the right visualization."
+      explainer={{
+        what: "A guided comparator for any two (or three) compatible numeric metrics in the database.",
+        does: "Produces a chart, statistical summary, stakeholder-ready narrative, and exports — without expecting readers to interpret raw JSON.",
+      }}
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 
@@ -555,7 +927,14 @@ export function ComparisonLabPage() {
                   {aiText}
                 </pre>
               ) : null}
-              <RunCharts data={run.data} />
+              <StakeholderReport data={run.data} />
+              <ComparisonLabDerivedFigures data={run.data} />
+              <div>
+                <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-cyan-400/80">
+                  Primary visualization
+                </p>
+                <RunCharts data={run.data} />
+              </div>
               <details className="text-xs text-zinc-500">
                 <summary className="cursor-pointer text-zinc-400">Raw stats</summary>
                 <pre className="mt-2 overflow-auto rounded-lg bg-black/40 p-3 font-mono text-[11px]">

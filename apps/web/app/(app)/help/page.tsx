@@ -8,7 +8,11 @@ export default function HelpPage() {
     <PageShell
       title="Data dictionary & analytics"
       eyebrow="Reference"
-      subtitle="Column-level documentation for the CHC assessment schema, derived metrics, validation rules, API behavior, and how each app page consumes the data."
+      subtitle="Human-readable reference: what each column means, how percentages and denominators work, validation rules, API routes, and which page loads which data."
+      explainer={{
+        what: "The single place to answer “what does this field mean?” and “where did this percentage come from?”",
+        does: "Lists every DB column used in analytics, explains derived metrics, and maps UI pages to API payloads.",
+      }}
     >
       <HelpDocs />
     </PageShell>

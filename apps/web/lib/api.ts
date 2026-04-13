@@ -16,6 +16,8 @@ import type {
   DecisionSupportResponse,
   PublicHealthIntelligenceResponse,
   SectionResponse,
+  IngestionSchemaResponse,
+  IngestionCreateResponse,
 } from "./types";
 
 const base = () => process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
@@ -29,7 +31,15 @@ async function parseJson<T>(res: Response, label: string): Promise<T> {
     const text = await res.text();
     throw new Error(`${label} ${res.status}: ${text.slice(0, 200)}`);
   }
-  return res.json() as Promise<T>;
+  const raw = await res.text();
+  if (!raw) {
+    throw new Error(`${label}: empty response body`);
+  }
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new Error(`${label}: invalid JSON response`);
+  }
 }
 
 export async function getOverview(filters?: AnalyticsFilters, signal?: AbortSignal) {
@@ -73,8 +83,17 @@ export async function getClinicalCrossSection(filters?: AnalyticsFilters, signal
   return parseJson<ClinicalCrossSectionResponse>(res, "clinical-cross-section");
 }
 
-export async function getExplorer(filters?: AnalyticsFilters, signal?: AbortSignal) {
-  const res = await fetch(`${base()}/analytics/explorer${q(filters)}`, { signal, cache: "no-store" });
+export async function getExplorer(
+  filters?: AnalyticsFilters,
+  opts?: { page?: number; pageSize?: number; signal?: AbortSignal },
+) {
+  const qs = new URLSearchParams(filtersToSearchParams(filters ?? {}));
+  if (opts?.page) qs.set("page", String(opts.page));
+  if (opts?.pageSize) qs.set("pageSize", String(opts.pageSize));
+  const res = await fetch(`${base()}/analytics/explorer?${qs.toString()}`, {
+    signal: opts?.signal,
+    cache: "no-store",
+  });
   return parseJson<ExplorerResponse>(res, "explorer");
 }
 
@@ -160,7 +179,7 @@ export async function getComparisonLabRun(
 export async function getAnomalies(
   metric: "live_births" | "maternal_deaths",
   filters?: AnalyticsFilters,
-  signal?: AbortSignal,
+  opts?: { page?: number; pageSize?: number; signal?: AbortSignal },
 ) {
   const qs = new URLSearchParams();
   qs.set("metric", metric);
@@ -168,11 +187,34 @@ export async function getAnomalies(
   if (filters?.to) qs.set("to", filters.to);
   if (filters?.district) qs.set("district", filters.district);
   if (filters?.facilityId) qs.set("facilityId", filters.facilityId);
+  if (opts?.page) qs.set("page", String(opts.page));
+  if (opts?.pageSize) qs.set("pageSize", String(opts.pageSize));
   const res = await fetch(`${base()}/analytics/anomalies?${qs.toString()}`, {
-    signal,
+    signal: opts?.signal,
     cache: "no-store",
   });
   return parseJson<AnomaliesResponse>(res, "anomalies");
+}
+
+export async function getIngestionSchema(signal?: AbortSignal) {
+  const res = await fetch(`${base()}/ingestion/schema`, { signal, cache: "no-store" });
+  return parseJson<IngestionSchemaResponse>(res, "ingestion schema");
+}
+
+export async function postIngestionAssessment(
+  payload: Record<string, unknown>,
+  opts?: { signal?: AbortSignal },
+) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const maybeKey = process.env.NEXT_PUBLIC_INGESTION_API_KEY?.trim();
+  if (maybeKey) headers["x-ingestion-key"] = maybeKey;
+  const res = await fetch(`${base()}/ingestion/assessments`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+    signal: opts?.signal,
+  });
+  return parseJson<IngestionCreateResponse>(res, "ingestion create");
 }
 
 export type { AnalyticsFilters } from "./query-params";

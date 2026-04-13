@@ -11,6 +11,11 @@ import { useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
 
+function pct(num: number, den: number, digits = 1) {
+  if (!den || den <= 0) return "n/a";
+  return `${((num / den) * 100).toFixed(digits)}%`;
+}
+
 export default function OverviewPage() {
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
@@ -24,13 +29,21 @@ export default function OverviewPage() {
 
   const anomalies = useQuery({
     queryKey: ["anomalies", "live_births", filtersKey],
-    queryFn: ({ signal }) => getAnomalies("live_births", filters, signal),
+    queryFn: ({ signal }) => getAnomalies("live_births", filters, { signal, page: 1, pageSize: 8 }),
     ...analyticsFilteredQuery,
   });
 
   if (q.isLoading) {
     return (
-      <PageShell title="Program overview" eyebrow="Decision intelligence" subtitle="Loading…">
+      <PageShell
+        title="Program overview"
+        eyebrow="Decision intelligence"
+        subtitle="Loading…"
+        explainer={{
+          what: "A single executive snapshot of everything in the database that matches your filters.",
+          does: "Shows facility and time coverage, section completeness, core rates with explicit numerators and denominators, and where to drill in next.",
+        }}
+      >
         <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
         <div className="h-40 animate-pulse rounded-xl bg-white/5" />
       </PageShell>
@@ -50,32 +63,67 @@ export default function OverviewPage() {
   const sr = d.kpis.screening_rates;
   const mat = d.kpis.mortality_rate_maternal_per_live_birth;
   const inst = d.kpis.institutional_delivery_ratio;
+  const neo = d.kpis.early_neonatal_mortality_rate_per_live_birth;
+  const anc = d.corpus.ancNumerators;
+  const od = d.corpus.outcomeDenominators;
+  const cov = d.corpus.sectionCoverage;
 
   return (
     <PageShell
       title="Program overview"
       eyebrow="Decision intelligence"
-      subtitle="Signals prioritized for action: screening coverage, management gaps, and mortality risk. Filters apply to every KPI below."
+      subtitle="One place to see how much data you have, where it sits in time and geography, and how key programme rates look — every percentage below names its denominator."
+      explainer={{
+        what: "The executive dashboard for the filtered CHC assessment corpus.",
+        does: "Aggregates all matching monthly facility rows: coverage, ANC screening numerators over Σ total_anc_registered, and outcome events over live births where applicable.",
+      }}
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 
-      <p className="mb-6 text-xs text-zinc-500">
-        Active window: {d.meta.assessmentCount} assessments
-        {d.meta.filters.from || d.meta.filters.to || d.meta.filters.district || d.meta.filters.facilityId
-          ? ` · filters ${JSON.stringify(d.meta.filters)}`
-          : " · full corpus"}
-      </p>
+      <div className="mb-8 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-zinc-400">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500">Data footprint (this filter)</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-[11px] text-zinc-500">Assessments</p>
+            <p className="font-mono text-lg text-white">{d.meta.assessmentCount}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-zinc-500">Facilities</p>
+            <p className="font-mono text-lg text-white">{d.meta.facilityCount}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-zinc-500">Districts represented</p>
+            <p className="font-mono text-lg text-white">{d.meta.districtCount}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-zinc-500">Reporting period (rows)</p>
+            <p className="font-mono text-sm text-zinc-200">
+              {d.meta.periodStartMin ?? "—"} → {d.meta.periodStartMax ?? "—"}
+            </p>
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-zinc-500">
+          Section presence (rows with each block non-null): preconception id / int / managed{" "}
+          <span className="font-mono text-zinc-400">
+            {cov.preconception_women_identified}/{cov.preconception_interventions}/{cov.preconception_women_managed}
+          </span>
+          {" · "}ANC registered{" "}
+          <span className="font-mono text-zinc-400">{cov.pregnant_women_registered_and_screened}</span>
+          {" · "}delivery & outcomes <span className="font-mono text-zinc-400">{cov.delivery_and_outcomes}</span>
+        </p>
+      </div>
 
       <KpiStrip
         items={[
           {
-            label: "Assessments in view",
-            value: String(d.meta.assessmentCount),
-            hint: "Rows after filters",
+            label: "Σ ANC registered (numerator pool)",
+            value: String(anc.denominator_total_anc_registered),
+            hint: "Sum of total_anc_registered across filtered rows — denominator for ANC screening %.",
           },
           {
-            label: "HIV screening rate (ANC)",
+            label: "HIV tested / Σ ANC",
             value: sr.screening_rate_hiv != null ? `${(sr.screening_rate_hiv * 100).toFixed(1)}%` : "n/a",
+            denominator: `${anc.hiv_tested} / ${anc.denominator_total_anc_registered}`,
             tone:
               sr.screening_rate_hiv != null && sr.screening_rate_hiv < 0.85 ? "warning" : "neutral",
             delta:
@@ -84,8 +132,20 @@ export default function OverviewPage() {
                 : undefined,
           },
           {
+            label: "Hb ×4 / Σ ANC",
+            value: sr.screening_rate_hgb_4x != null ? `${(sr.screening_rate_hgb_4x * 100).toFixed(1)}%` : "n/a",
+            denominator: `${anc.hemoglobin_tested_4_times} / ${anc.denominator_total_anc_registered}`,
+            tone:
+              sr.screening_rate_hgb_4x != null && sr.screening_rate_hgb_4x < 0.75 ? "warning" : "neutral",
+            delta:
+              sr.screening_rate_hgb_4x != null && sr.screening_rate_hgb_4x < 0.75
+                ? "Strengthen trimester Hb cadence"
+                : undefined,
+          },
+          {
             label: "Maternal deaths / live births",
-            value: mat != null ? mat.toFixed(5) : "n/a",
+            value: mat != null ? `${(mat * 100).toFixed(3)}%` : "n/a",
+            denominator: `${od.maternal_deaths} / ${od.live_births}`,
             tone: mat != null && mat > 0.002 ? "critical" : "neutral",
             delta:
               mat != null && mat > 0.002
@@ -93,12 +153,59 @@ export default function OverviewPage() {
                 : undefined,
           },
           {
+            label: "Early neonatal deaths / live births",
+            value: neo != null ? `${(neo * 100).toFixed(3)}%` : "n/a",
+            denominator: `${od.early_neonatal_deaths_lt_24hrs} / ${od.live_births}`,
+          },
+          {
             label: "Institutional delivery ratio",
             value: inst != null ? `${(inst * 100).toFixed(1)}%` : "n/a",
-            hint: "(facility + other) / all delivery sites",
+            hint: "(facility + other institutional) ÷ all delivery sites — see analytics engine definition.",
+          },
+          {
+            label: "LBW / live births",
+            value: d.kpis.lbw_rate != null ? `${(d.kpis.lbw_rate * 100).toFixed(1)}%` : "n/a",
+            denominator: `${od.lbw_lt_2500g} / ${od.live_births}`,
+          },
+          {
+            label: "Preterm / live births",
+            value: d.kpis.preterm_rate != null ? `${(d.kpis.preterm_rate * 100).toFixed(1)}%` : "n/a",
+            denominator: `${od.preterm_births_lt_37_weeks} / ${od.live_births}`,
           },
         ]}
       />
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <p className="text-[11px] font-medium uppercase text-zinc-500">Preconception funnel (sums)</p>
+          <p className="mt-2 text-sm text-zinc-300">
+            Identified <span className="font-mono text-cyan-400/90">{d.funnel.preconception.identified_total}</span>
+            {" · "}
+            Managed <span className="font-mono text-cyan-400/90">{d.funnel.preconception.managed_total}</span>
+          </p>
+          <p className="mt-1 text-xs text-zinc-600">
+            Managed % of identified (same field family):{" "}
+            {d.funnel.preconception.identified_total > 0
+              ? pct(d.funnel.preconception.managed_total, d.funnel.preconception.identified_total)
+              : "n/a"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <p className="text-[11px] font-medium uppercase text-zinc-500">Pregnancy (sums)</p>
+          <p className="mt-2 text-sm text-zinc-300">
+            Σ ANC reg. <span className="font-mono text-cyan-400/90">{d.funnel.pregnancy.registered_total}</span>
+            {" · "}Identified {d.funnel.pregnancy.identified_total} · Managed {d.funnel.pregnancy.managed_total}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <p className="text-[11px] font-medium uppercase text-zinc-500">Outcomes (sums)</p>
+          <p className="mt-2 text-sm text-zinc-300">
+            Live births <span className="font-mono text-cyan-400/90">{d.funnel.outcomes.live_births}</span>
+            {" · "}Maternal deaths {d.funnel.outcomes.maternal_deaths} · Early NND{" "}
+            {d.funnel.outcomes.early_neonatal_deaths_lt_24hrs}
+          </p>
+        </div>
+      </div>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <motion.div
@@ -138,7 +245,7 @@ export default function OverviewPage() {
           href={withQueryString("/correlations", qs)}
           className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.06]"
         >
-          Correlation matrix
+          Correlation & intervention view
         </Link>
       </div>
 
@@ -146,14 +253,16 @@ export default function OverviewPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-medium text-white">Live births — statistical anomalies</h3>
           <p className="text-xs text-zinc-500">
-            |z| &gt; {anomalies.data?.thresholdZ ?? 2.5} vs cohort (same filters)
+            |z| &gt; {anomalies.data?.thresholdZ ?? 2.5} vs cohort · showing page{" "}
+            {anomalies.data?.meta.page ?? 1} of {anomalies.data?.meta.totalPages ?? 1} (
+            {anomalies.data?.meta.total ?? 0} flags)
           </p>
         </div>
         {anomalies.isLoading ? (
           <p className="mt-3 text-sm text-zinc-500">Loading anomalies…</p>
         ) : anomalies.data && anomalies.data.points.length > 0 ? (
           <ul className="mt-4 space-y-2 text-sm text-zinc-300">
-            {anomalies.data.points.slice(0, 8).map((p) => (
+            {anomalies.data.points.map((p) => (
               <li key={`${p.assessmentId}-${p.index}`} className="flex flex-wrap gap-2">
                 <span className="font-mono text-cyan-400/90">z={p.z.toFixed(2)}</span>
                 <span>

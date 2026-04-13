@@ -1,5 +1,6 @@
 export * from "./sections";
 export * from "./aggregate";
+export * from "./section-field-metrics";
 export * from "./derived";
 export * from "./validation";
 export * from "./intelligence";

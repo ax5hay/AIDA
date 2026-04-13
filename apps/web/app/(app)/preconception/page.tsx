@@ -36,7 +36,7 @@ export default function PreconceptionPage() {
     <PageShell
       title="Preconception intelligence"
       eyebrow="Risk identification & coverage"
-      subtitle="Identified vs managed are separate cohorts. Interventions sit between them — use comparative shares to see where burden concentrates."
+      subtitle="Field cards show % vs Σ all counts in that section (workload mix). One woman may appear in multiple condition fields; delivery-style sections use live births or site totals where applicable — see Help."
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 
@@ -46,7 +46,7 @@ export default function PreconceptionPage() {
         <div className="h-40 animate-pulse rounded-xl bg-white/5" />
       ) : (
         <div className="space-y-14">
-          <Section title="Women identified" hint="Absolute counts & share of section total">
+          <Section title="Women identified" hint="Each % = field count ÷ Σ all fields in this section">
             {identified.data ? (
               <>
                 <FieldMetricGrid rows={identified.data.fieldMetrics} />
@@ -59,7 +59,7 @@ export default function PreconceptionPage() {
               </>
             ) : null}
           </Section>
-          <Section title="Women managed" hint="Must not exceed identified counts (validated on ingest)">
+          <Section title="Women managed" hint="Same denominator rule as identified — compare cohorts across sections">
             {managed.data ? (
               <>
                 <FieldMetricGrid rows={managed.data.fieldMetrics} />

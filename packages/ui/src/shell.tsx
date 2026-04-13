@@ -11,13 +11,22 @@ export function PageShell({
   eyebrow,
   children,
   actions,
+  explainer,
 }: {
   title: string;
   subtitle?: string;
   eyebrow?: string;
   children: ReactNode;
   actions?: ReactNode;
+  explainer?: { what: string; does: string };
 }) {
+  const help = explainer ?? {
+    what: `This page is the ${title} view.`,
+    does:
+      subtitle ??
+      "It summarizes filtered CHC data, shows the underlying metrics, and helps you take action based on those signals.",
+  };
+
   return (
     <div className="min-h-screen bg-[#07080c] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(56,189,248,0.08),transparent_55%),radial-gradient(ellipse_at_bottom,_rgba(99,102,241,0.06),transparent_50%)]" />
@@ -41,6 +50,22 @@ export function PageShell({
           </div>
           {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
         </motion.header>
+        <motion.section
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="mb-8 rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-4 sm:mb-10"
+        >
+          <h2 className="text-xs font-medium uppercase tracking-[0.12em] text-cyan-300/90">
+            Page guide
+          </h2>
+          <p className="mt-2 text-sm text-zinc-300">
+            <span className="font-medium text-white">What this is:</span> {help.what}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">
+            <span className="font-medium text-zinc-200">What it does:</span> {help.does}
+          </p>
+        </motion.section>
         {children}
         <div className="pointer-events-none mt-12 flex justify-center pb-1 md:mt-16">
           <AiximiusMark />

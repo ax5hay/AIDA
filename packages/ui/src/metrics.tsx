@@ -9,6 +9,8 @@ export function KpiStrip({
   items: Array<{
     label: string;
     value: string;
+    /** e.g. "numerator / denominator" for transparency */
+    denominator?: string;
     delta?: string;
     tone?: "neutral" | "positive" | "warning" | "critical";
     hint?: string;
@@ -29,6 +31,9 @@ export function KpiStrip({
         >
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">{item.label}</p>
           <p className="mt-2 font-mono text-2xl font-medium tabular-nums text-white">{item.value}</p>
+          {item.denominator ? (
+            <p className="mt-1 font-mono text-xs tabular-nums text-zinc-500">{item.denominator}</p>
+          ) : null}
           {item.hint ? <p className="mt-1 text-xs text-zinc-500">{item.hint}</p> : null}
           {item.delta ? (
             <p
