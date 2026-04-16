@@ -25,7 +25,10 @@ import {
   sumFields,
   validateManagedVsIdentified,
   validateScreeningVsRegistered,
+  buildCompactCorrelationSeries,
+  computeAnemiaBmiWindowStats,
   correlationCoefficient,
+  splitRowsForInterventionComparison,
   COMPARISON_METRICS,
   buildCompatibilityMatrix,
   getMetricDef,
@@ -524,69 +527,17 @@ export class AnalyticsService {
       select: CORRELATIONS_SELECT,
       orderBy: { periodStart: "asc" },
     });
-    const anemiaPre = rows.map((r) => {
-      const p = r.preconceptionWomenIdentified;
-      if (!p) return 0;
-      return p.severe_anemia_hb_lt_8 + p.moderate_anemia_hb_8_to_11_99;
-    });
-    const bmiPre = rows.map((r) => {
-      const p = r.preconceptionWomenIdentified;
-      if (!p) return 0;
-      return p.bmi_lt_16 + p.bmi_16_to_18_49 + p.bmi_18_5_to_lt_21;
-    });
-    const anemiaPreg = rows.map((r) => {
-      const p = r.pregnantWomenIdentified;
-      if (!p) return 0;
-      return p.severe_anemia_hb_lt_7 + p.moderate_anemia_hb_7_to_9_9;
-    });
-    const bmiPreg = rows.map((r) => {
-      const p = r.pregnantWomenIdentified;
-      if (!p) return 0;
-      return p.bmi_lt_18_5 + p.bmi_lt_25;
-    });
-
     const sorted = [...rows].sort((a, b) => a.periodStart.getTime() - b.periodStart.getTime());
-    const mid = Math.max(1, Math.floor(sorted.length / 2));
-    const beforeRows = sorted.slice(0, mid);
-    const afterRows = sorted.slice(mid);
+    const split = splitRowsForInterventionComparison(sorted);
+    const beforeStats = computeAnemiaBmiWindowStats(split.before);
+    const afterStats = computeAnemiaBmiWindowStats(split.after);
 
-    const buildAnemiaBmiSeries = (subset: typeof sorted) => {
-      const ap = subset.map((r) => {
-        const p = r.preconceptionWomenIdentified;
-        if (!p) return 0;
-        return p.severe_anemia_hb_lt_8 + p.moderate_anemia_hb_8_to_11_99;
-      });
-      const bp = subset.map((r) => {
-        const p = r.preconceptionWomenIdentified;
-        if (!p) return 0;
-        return p.bmi_lt_16 + p.bmi_16_to_18_49 + p.bmi_18_5_to_lt_21;
-      });
-      const apg = subset.map((r) => {
-        const p = r.pregnantWomenIdentified;
-        if (!p) return 0;
-        return p.severe_anemia_hb_lt_7 + p.moderate_anemia_hb_7_to_9_9;
-      });
-      const bpg = subset.map((r) => {
-        const p = r.pregnantWomenIdentified;
-        if (!p) return 0;
-        return p.bmi_lt_18_5 + p.bmi_lt_25;
-      });
-      return {
-        pre_r: correlationCoefficient(ap, bp),
-        preg_r: correlationCoefficient(apg, bpg),
-        live_sum: subset.reduce((s, r) => s + (r.deliveryAndOutcomes?.live_births ?? 0), 0),
-        n: subset.length,
-      };
-    };
+    const compact = buildCompactCorrelationSeries(rows);
 
-    const beforeStats = buildAnemiaBmiSeries(beforeRows);
-    const afterStats = buildAnemiaBmiSeries(afterRows);
-    const cutoff = sorted[mid - 1]?.periodStart;
     const interventionComparison = {
-      method: "median_period_split" as const,
-      note:
-        "Exploratory before/after split at the midpoint of the filtered timeline — not a randomized trial. Use for programme timing hypotheses only.",
-      cutoffPeriodStart: cutoff ? cutoff.toISOString().slice(0, 10) : null,
+      method: split.method,
+      note: split.note,
+      cutoffPeriodStart: split.cutoffPeriodStart,
       before: beforeStats,
       after: afterStats,
     };
@@ -594,29 +545,29 @@ export class AnalyticsService {
     const payload = {
       anemia_vs_bmi: {
         preconception: {
-          r: correlationCoefficient(anemiaPre, bmiPre),
+          r: correlationCoefficient(compact.anemiaPre, compact.bmiPre),
           series: rows.map((r, i) => ({
             assessmentId: r.id,
-            anemia_identified: anemiaPre[i],
-            bmi_band_total: bmiPre[i],
+            anemia_identified: compact.anemiaPre[i],
+            bmi_band_total: compact.bmiPre[i],
           })),
         },
         pregnancy: {
-          r: correlationCoefficient(anemiaPreg, bmiPreg),
+          r: correlationCoefficient(compact.anemiaPreg, compact.bmiPreg),
           series: rows.map((r, i) => ({
             assessmentId: r.id,
-            anemia_identified: anemiaPreg[i],
-            bmi_band_total: bmiPreg[i],
+            anemia_identified: compact.anemiaPreg[i],
+            bmi_band_total: compact.bmiPreg[i],
           })),
         },
       },
       interventionComparison,
       matrix: correlationMatrix({
-        anemia_pre: anemiaPre,
-        bmi_pre: bmiPre,
-        anemia_preg: anemiaPreg,
-        bmi_preg: bmiPreg,
-        live_births: rows.map((r) => r.deliveryAndOutcomes?.live_births ?? 0),
+        anemia_pre: compact.anemiaPre,
+        bmi_pre: compact.bmiPre,
+        anemia_preg: compact.anemiaPreg,
+        bmi_preg: compact.bmiPreg,
+        live_births: compact.liveBirths,
       }),
     };
     await this.cache.set(key, payload, 30_000);

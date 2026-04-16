@@ -9,7 +9,9 @@ import {
   PRECONCEPTION_WOMEN_IDENTIFIED_FIELDS,
   chiSquare2x2,
   classifyTrend,
-  correlationCoefficient,
+  buildIntelligenceCorrelationPresets,
+  buildIntelligencePerAssessmentSeries,
+  computeDistrictSeverityScore,
   deterministicIntelligenceInsights,
   distributionShares,
   earlyNeonatalMortalityRate,
@@ -24,7 +26,6 @@ import {
   riskRatio2x2,
   screeningRates,
   seasonalIndicesByMonth,
-  spearmanCorrelation,
   sumFields,
   zScoreSpikeIndices,
   buildAllPipelines,
@@ -38,6 +39,7 @@ import {
   topIsolationAnomalyIndices,
 } from "@aida/ml-engine";
 
+import type { IntelligenceCorrelationRow } from "@aida/analytics-engine";
 import type { ExplorerFilters } from "./analytics-filters";
 import type { FacilityAssessmentIntelligenceRow } from "./assessment-selects";
 
@@ -216,8 +218,11 @@ export function buildPublicHealthIntelligence(
     const treatmentG = Math.max(0, x.pregId - x.pregMan);
     const treatmentGapRate = x.pregId > 0 ? treatmentG / x.pregId : null;
     const lbwRateD = x.live > 0 ? x.lbw / x.live : null;
-    const severity =
-      (screeningGapRate ?? 0) * 0.4 + (treatmentGapRate ?? 0) * 0.35 + (lbwRateD ?? 0) * 0.25;
+    const severity_score = computeDistrictSeverityScore({
+      screening_gap_rate: screeningGapRate,
+      treatment_gap_rate: treatmentGapRate,
+      lbw_rate: lbwRateD,
+    });
     return {
       district: x.district,
       state: x.state,
@@ -226,104 +231,43 @@ export function buildPublicHealthIntelligence(
       treatment_gap_count: treatmentG,
       treatment_gap_rate: treatmentGapRate,
       lbw_rate: lbwRateD,
-      severity_score: severity,
+      severity_score,
     };
   });
   districtGapRows.sort((a, b) => b.severity_score - a.severity_score);
 
-  /** Correlation & preset pairs (per assessment) */
-  const anemiaPre = rows.map((r) => {
-    const p = r.preconceptionWomenIdentified;
-    if (!p) return 0;
-    return p.severe_anemia_hb_lt_8 + p.moderate_anemia_hb_8_to_11_99;
-  });
-  const bmiPre = rows.map((r) => {
-    const p = r.preconceptionWomenIdentified;
-    if (!p) return 0;
-    return p.bmi_lt_16 + p.bmi_16_to_18_49 + p.bmi_18_5_to_lt_21;
-  });
-  const anemiaPreg = rows.map((r) => {
-    const p = r.pregnantWomenIdentified;
-    if (!p) return 0;
-    return p.severe_anemia_hb_lt_7 + p.moderate_anemia_hb_7_to_9_9;
-  });
-  const bmiPreg = rows.map((r) => {
-    const p = r.pregnantWomenIdentified;
-    if (!p) return 0;
-    return p.bmi_lt_18_5 + p.bmi_lt_25;
-  });
-  const preterm = rows.map((r) => r.deliveryAndOutcomes?.preterm_births_lt_37_weeks ?? 0);
-  const lbw = rows.map((r) => r.deliveryAndOutcomes?.lbw_lt_2500g ?? 0);
-  const live = rows.map((r) => r.deliveryAndOutcomes?.live_births ?? 0);
-  const ancReg = rows.map((r) => r.pregnantWomenRegisteredAndScreened?.total_anc_registered ?? 0);
-  const inst = rows.map((r) => {
-    const d = r.deliveryAndOutcomes;
-    if (!d) return 0;
-    return d.institutional_delivery_facility + d.institutional_delivery_other;
-  });
-  const diabetes = rows.map((r) => r.pregnantWomenIdentified?.diabetes_mellitus ?? 0);
-  const hypertension = rows.map((r) => r.pregnantWomenIdentified?.hypertension ?? 0);
-  const matDeaths = rows.map((r) => r.deliveryAndOutcomes?.maternal_deaths ?? 0);
-  const ebf = rows.map((r) => r.infants0To24Months?.ebf_0_6_months ?? 0);
-  const wtOk = rows.map((r) => r.infants0To24Months?.adequate_weight_gain_0_24_months ?? 0);
-
-  const presets = {
-    anemia_preterm: {
-      pearson: correlationCoefficient(anemiaPreg, preterm),
-      spearman: spearmanCorrelation(anemiaPreg, preterm),
-      label: "Pregnancy anemia counts vs preterm births (same window)",
-    },
-    anemia_lbw: {
-      pearson: correlationCoefficient(anemiaPreg, lbw),
-      spearman: spearmanCorrelation(anemiaPreg, lbw),
-      label: "Pregnancy anemia vs LBW counts",
-    },
-    bmi_birthweight: {
-      pearson: correlationCoefficient(bmiPreg, lbw),
-      spearman: spearmanCorrelation(bmiPreg, lbw),
-      label: "BMI risk bands vs LBW counts",
-    },
-    anc_institutional: {
-      pearson: correlationCoefficient(ancReg, inst),
-      spearman: spearmanCorrelation(ancReg, inst),
-      label: "ANC registered vs institutional delivery counts",
-    },
-    diabetes_complications: {
-      pearson: correlationCoefficient(diabetes, preterm),
-      spearman: spearmanCorrelation(diabetes, preterm),
-      label: "Diabetes (identified) vs preterm births",
-    },
-    hypertension_mortality: {
-      pearson: correlationCoefficient(hypertension, matDeaths),
-      spearman: spearmanCorrelation(hypertension, matDeaths),
-      label: "Hypertension (identified) vs maternal deaths",
-    },
-    breastfeeding_growth: {
-      pearson: correlationCoefficient(ebf, wtOk),
-      spearman: spearmanCorrelation(ebf, wtOk),
-      label: "EBF vs adequate weight gain (0–24m)",
-    },
-  };
+  const corrRows = rows.map(
+    (r) =>
+      ({
+        preconceptionWomenIdentified: r.preconceptionWomenIdentified,
+        pregnantWomenIdentified: r.pregnantWomenIdentified,
+        pregnantWomenRegisteredAndScreened: r.pregnantWomenRegisteredAndScreened,
+        deliveryAndOutcomes: r.deliveryAndOutcomes,
+        infants0To24Months: r.infants0To24Months,
+      }) satisfies IntelligenceCorrelationRow,
+  );
+  const seriesBundle = buildIntelligencePerAssessmentSeries(corrRows);
+  const presets = buildIntelligenceCorrelationPresets(seriesBundle);
 
   const extendedMatrix = correlationMatrix({
-    anemia_pre: anemiaPre,
-    bmi_pre: bmiPre,
-    anemia_preg: anemiaPreg,
-    bmi_preg: bmiPreg,
-    preterm,
-    lbw,
-    live_births: live,
-    anc_reg: ancReg,
-    institutional: inst,
-    diabetes,
-    hypertension,
-    ebf,
-    wt_ok: wtOk,
+    anemia_pre: seriesBundle.anemiaPre,
+    bmi_pre: seriesBundle.bmiPre,
+    anemia_preg: seriesBundle.anemiaPreg,
+    bmi_preg: seriesBundle.bmiPreg,
+    preterm: seriesBundle.preterm,
+    lbw: seriesBundle.lbw,
+    live_births: seriesBundle.live,
+    anc_reg: seriesBundle.ancReg,
+    institutional: seriesBundle.institutional,
+    diabetes: seriesBundle.diabetes,
+    hypertension: seriesBundle.hypertension,
+    ebf: seriesBundle.ebf,
+    wt_ok: seriesBundle.wtOk,
   });
 
   const binaryAnemiaPreterm = rows.map((_, i) => ({
-    exposed: anemiaPreg[i]! > 0,
-    outcome: preterm[i]! > 0,
+    exposed: seriesBundle.anemiaPreg[i]! > 0,
+    outcome: seriesBundle.preterm[i]! > 0,
   }));
   let a = 0,
     b = 0,
@@ -340,8 +284,8 @@ export function buildPublicHealthIntelligence(
 
   const scatterRegression = {
     anc_vs_institutional: (() => {
-      const xs = ancReg;
-      const ys = inst;
+      const xs = seriesBundle.ancReg;
+      const ys = seriesBundle.institutional;
       const reg = linearRegression(xs, ys);
       const points = rows.map((r, i) => ({
         assessmentId: r.id,
@@ -351,8 +295,8 @@ export function buildPublicHealthIntelligence(
       return { ...reg, points };
     })(),
     anemia_vs_lbw: (() => {
-      const xs = anemiaPreg;
-      const ys = lbw;
+      const xs = seriesBundle.anemiaPreg;
+      const ys = seriesBundle.lbw;
       return { ...linearRegression(xs, ys), points: rows.map((r, i) => ({ assessmentId: r.id, x: xs[i]!, y: ys[i]! })) };
     })(),
   };

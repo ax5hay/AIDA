@@ -6,6 +6,7 @@ import { getCorrelations } from "@/lib/api";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
+import { correlationMatrixCellHeatClass } from "@/lib/correlation-heatmap";
 
 function rLabel(v: number | null | undefined) {
   if (v === null || v === undefined || Number.isNaN(v)) return "n/a";
@@ -34,7 +35,7 @@ export default function CorrelationsPage() {
     <PageShell
       title="Correlation engine"
       eyebrow="Drivers · programme timing · outcomes"
-      subtitle="Pearson r on assessment-level engineered series. The before/after split is exploratory — it helps discuss intervention timing, not causal proof."
+      subtitle="Pearson r on assessment-level engineered series (same definitions as the analytics engine). Before/after uses a median reporting-date split when timestamps vary; if every row shares the same period, the API falls back to splitting by row order."
       explainer={{
         what: "Statistical relationships between anemia proxies, BMI bands, and live births in your filter.",
         does: "Shows full-matrix correlations plus an automatic first-half vs second-half comparison by reporting period to frame programme success narratives.",
@@ -50,7 +51,10 @@ export default function CorrelationsPage() {
         <div className="space-y-10">
           {iv ? (
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/20 p-5 sm:p-6">
-              <h2 className="text-sm font-medium text-emerald-200/90">Before & after (midpoint split)</h2>
+              <h2 className="text-sm font-medium text-emerald-200/90">Before & after (time-aware split)</h2>
+              <p className="mt-1 text-[11px] font-mono text-zinc-500">
+                Method: <span className="text-zinc-400">{iv.method}</span>
+              </p>
               <p className="mt-2 text-sm text-zinc-400">{iv.note}</p>
               <p className="mt-2 text-xs text-zinc-500">
                 Cutoff period (last month of &quot;before&quot; window):{" "}
@@ -155,18 +159,7 @@ export default function CorrelationsPage() {
                         <td className="p-2 font-mono text-[10px] text-zinc-400">{row}</td>
                         {names.map((col) => {
                           const r = matrixLookup.get(`${row}::${col}`);
-                          const heat =
-                            r === null || r === undefined
-                              ? "bg-transparent"
-                              : r > 0.5
-                                ? "bg-emerald-500/30"
-                                : r > 0.2
-                                  ? "bg-emerald-500/15"
-                                  : r < -0.5
-                                    ? "bg-rose-500/30"
-                                    : r < -0.2
-                                      ? "bg-rose-500/15"
-                                      : "bg-white/5";
+                          const heat = correlationMatrixCellHeatClass(r);
                           return (
                             <td key={col} className={`p-2 font-mono tabular-nums ${heat}`}>
                               {r !== null && r !== undefined ? r.toFixed(2) : "n/a"}

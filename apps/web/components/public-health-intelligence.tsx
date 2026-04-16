@@ -24,6 +24,7 @@ import type { AnalyticsFilters } from "@/lib/query-params";
 import { getIntelligence, postAiIntelligenceInsights } from "@/lib/api";
 import type { PublicHealthIntelligenceResponse } from "@/lib/types";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
+import { correlationMatrixCellHeatClass } from "@/lib/correlation-heatmap";
 import { cn } from "@aida/ui";
 
 const TOOLTIP_PROPS = {
@@ -336,18 +337,7 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
                       <td className="p-1 font-mono text-zinc-500">{row}</td>
                       {matrixNames.map((col) => {
                         const r = matrixLookup.get(`${row}::${col}`);
-                        const heat =
-                          r === null || r === undefined
-                            ? "bg-transparent"
-                            : r > 0.5
-                              ? "bg-emerald-500/35"
-                              : r > 0.2
-                                ? "bg-emerald-500/18"
-                                : r < -0.5
-                                  ? "bg-rose-500/35"
-                                  : r < -0.2
-                                    ? "bg-rose-500/18"
-                                    : "bg-white/5";
+                        const heat = correlationMatrixCellHeatClass(r, { variant: "dense" });
                         return (
                           <td key={col} className={cn("p-1 font-mono tabular-nums text-zinc-200", heat)}>
                             {r !== null && r !== undefined ? r.toFixed(2) : "n/a"}

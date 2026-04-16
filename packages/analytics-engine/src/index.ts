@@ -8,3 +8,6 @@ export * from "./pipelines";
 export * from "./insights";
 export * from "./decision-support";
 export * from "./comparison-lab";
+export * from "./correlation-series";
+export * from "./temporal-split";
+export * from "./district-severity";

@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@aida/ui";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
+import { correlationMatrixCellHeatClass } from "@/lib/correlation-heatmap";
 import { PublicHealthIntelligenceLoader } from "@/components/public-health-intelligence";
 
 const CHART_AXIS = { tick: { fill: "#a1a1aa", fontSize: 11 } };
@@ -476,18 +477,7 @@ export function AnalyticsSuite({
                     <td className="p-2 font-mono text-[10px] text-zinc-400">{row}</td>
                     {names.map((col) => {
                       const r = matrixLookup.get(`${row}::${col}`);
-                      const heat =
-                        r === null || r === undefined
-                          ? "bg-transparent"
-                          : r > 0.5
-                            ? "bg-emerald-500/35"
-                            : r > 0.2
-                              ? "bg-emerald-500/18"
-                              : r < -0.5
-                                ? "bg-rose-500/35"
-                                : r < -0.2
-                                  ? "bg-rose-500/18"
-                                  : "bg-white/5";
+                      const heat = correlationMatrixCellHeatClass(r, { variant: "dense" });
                       return (
                         <td key={col} className={cn("p-2 font-mono tabular-nums text-zinc-200", heat)}>
                           {r !== null && r !== undefined ? r.toFixed(2) : "n/a"}

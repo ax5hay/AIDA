@@ -1,0 +1,10 @@
+# Used by scripts/ngrok-dev.sh when mode is "both".
+# Next.js (3000) rewrites /api/* → localhost:4000, so tunneling web alone is often enough.
+version: "2"
+tunnels:
+  web:
+    proto: http
+    addr: 3000
+  api:
+    proto: http
+    addr: 4000
