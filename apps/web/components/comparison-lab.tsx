@@ -23,7 +23,10 @@ import { PageShell, cn } from "@aida/ui";
 import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { getComparisonLabCatalog, getComparisonLabRun, postAiInsights } from "@/lib/api";
+import { AiNarrative } from "@/components/ai-narrative";
+import { AiMitigationPanel } from "@/components/ai-mitigation-panel";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
+import type { AnalyticsFilters } from "@/lib/query-params";
 import type { ComparisonLabRunResponse, ComparisonMetricDto } from "@/lib/types";
 
 const TOOLTIP_PROPS = {
@@ -42,6 +45,45 @@ const TOOLTIP_PROPS = {
 const CHART_AXIS = { tick: { fill: "#a1a1aa", fontSize: 11 } };
 
 const SAVES_KEY = "aida-comparison-lab-saves-v1";
+
+/** Cap scatter points in AI POST body — full run can be thousands of rows. */
+const AI_SCATTER_SAMPLE_MAX = 160;
+
+function buildComparisonLabAiSnapshot(
+  run: ComparisonLabRunResponse | undefined,
+  filters: AnalyticsFilters,
+  metricA: string,
+  metricB: string,
+  metricC: string | undefined,
+) {
+  if (!run) {
+    return { page: "comparison-lab" as const, filters, run: null };
+  }
+  const scatter = run.scatter;
+  let scatterSample = scatter;
+  let note: string | undefined;
+  if (scatter && scatter.length > AI_SCATTER_SAMPLE_MAX) {
+    const half = Math.floor(AI_SCATTER_SAMPLE_MAX / 2);
+    scatterSample = [...scatter.slice(0, half), ...scatter.slice(-half)];
+    note = `Scatter sampled for LLM: ${scatter.length} points total; first ${half} and last ${half} included.`;
+  }
+  return {
+    page: "comparison-lab" as const,
+    filters,
+    run: {
+      insight: run.insight,
+      chartKind: run.chartKind,
+      nRows: run.nRows,
+      stats: run.stats,
+      metrics: run.metricA && run.metricB ? { metricA: run.metricA, metricB: run.metricB, metricC: run.metricC } : undefined,
+      scatterSample,
+      lineSeries: run.lineSeries,
+      barGroups: run.barGroups,
+      contingency: run.contingency,
+      note,
+    },
+  };
+}
 
 type SavedComparison = {
   name: string;
@@ -720,13 +762,10 @@ export function ComparisonLabPage() {
 
   const aiMut = useMutation({
     mutationFn: () =>
-      postAiInsights({
-        page: "comparison-lab",
-        filters,
-        run: run.data,
-      }),
+      postAiInsights(buildComparisonLabAiSnapshot(run.data, filters, metricA, metricB, metricC || undefined)),
   });
-  const aiText = aiMut.data?.text ?? null;
+  const aiLlmError = aiMut.data?.llmError;
+  const aiText = aiLlmError ? null : (aiMut.data?.text ?? null);
 
   const canRun = !!metricA && !!metricB && matrix?.[metricA]?.[metricB]?.ok;
 
@@ -922,11 +961,23 @@ export function ComparisonLabPage() {
                   {aiMut.isPending ? "AI…" : "AI explain relationship"}
                 </button>
               </div>
-              {aiText ? (
-                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/40 p-3 font-sans text-xs text-zinc-300">
-                  {aiText}
-                </pre>
+              {aiMut.isError ? (
+                <p className="text-sm text-rose-400">{(aiMut.error as Error).message}</p>
               ) : null}
+              {aiLlmError ? (
+                <p className="text-sm text-rose-400">{aiLlmError}</p>
+              ) : null}
+              {aiText ? (
+                <div className="max-h-96 overflow-auto rounded-lg border border-white/10 bg-black/40 p-4">
+                  <AiNarrative text={aiText} />
+                </div>
+              ) : null}
+              <AiMitigationPanel
+                mitigation={aiMut.data?.mitigation}
+                title="Comparison lab — prompt shaping"
+                accent="violet"
+                className="mt-3"
+              />
               <StakeholderReport data={run.data} />
               <ComparisonLabDerivedFigures data={run.data} />
               <div>

@@ -151,7 +151,7 @@ export function AnalyticsSuite({
         </h2>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">
           This page is not limited to one clinical chapter: it pulls the same filtered{" "}
-          <strong className="font-medium text-zinc-200">ChcAssessment</strong> rows used everywhere else — all linked
+          <strong className="font-medium text-zinc-200">Facility assessment</strong> rows used everywhere else — all linked
           section tables contribute to intelligence, rollups, scatters, and the matrix below. Percentages in the evidence
           panel use explicit denominators (Σ ANC or live births) as labeled.
         </p>

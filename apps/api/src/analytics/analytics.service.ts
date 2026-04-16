@@ -44,16 +44,16 @@ import {
 import { correlationMatrix, detectAnomalies, type AnomalyFlag } from "@aida/ml-engine";
 import { PrismaService } from "../prisma/prisma.service";
 import {
-  CHC_ANOMALIES_SELECT,
-  CHC_ASSESSMENT_OVERVIEW_SELECT,
-  CHC_CORRELATIONS_SELECT,
-  CHC_EXPLORER_SELECT,
-  CHC_INTELLIGENCE_SELECT,
-  CHC_SECTION_SELECTS,
+  ANOMALIES_SELECT,
+  ASSESSMENT_OVERVIEW_SELECT,
+  CORRELATIONS_SELECT,
+  EXPLORER_SELECT,
+  INTELLIGENCE_SELECT,
+  ASSESSMENT_SECTION_SELECTS,
 } from "./assessment-selects";
 import { buildDecisionSupportBundle } from "./decision-support-aggregator";
 import { buildPublicHealthIntelligence } from "./intelligence-aggregator";
-import { CHC_ASSESSMENT_ANALYTICS_INCLUDE, type ChcAssessmentAnalytics } from "./assessment-include";
+import { ASSESSMENT_ANALYTICS_INCLUDE, type FacilityAssessmentAnalytics } from "./assessment-include";
 import type { ExplorerFilters } from "./analytics-filters";
 import { extractComparisonMetric } from "./comparison-lab-metrics";
 
@@ -123,9 +123,9 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_INTELLIGENCE_SELECT }>>("intelligence", {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof INTELLIGENCE_SELECT }>>("intelligence", {
       where: this.whereClause(f),
-      select: CHC_INTELLIGENCE_SELECT,
+      select: INTELLIGENCE_SELECT,
       orderBy: { periodStart: "asc" },
     });
 
@@ -140,9 +140,9 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_INTELLIGENCE_SELECT }>>("decision-support", {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof INTELLIGENCE_SELECT }>>("decision-support", {
       where: this.whereClause(f),
-      select: CHC_INTELLIGENCE_SELECT,
+      select: INTELLIGENCE_SELECT,
       orderBy: { periodStart: "asc" },
     });
 
@@ -191,9 +191,9 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_ASSESSMENT_OVERVIEW_SELECT }>>("overview", {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof ASSESSMENT_OVERVIEW_SELECT }>>("overview", {
       where: this.whereClause(f),
-      select: CHC_ASSESSMENT_OVERVIEW_SELECT,
+      select: ASSESSMENT_OVERVIEW_SELECT,
       orderBy: { periodStart: "asc" },
     });
 
@@ -428,7 +428,7 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const select = CHC_SECTION_SELECTS[section];
+    const select = ASSESSMENT_SECTION_SELECTS[section];
     if (!select) {
       throw new NotFoundException(`Unknown section: ${section}`);
     }
@@ -441,7 +441,7 @@ export class AnalyticsService {
 
     const pickers: Record<
       string,
-      (r: ChcAssessmentAnalytics) => Record<string, number> | null | undefined
+      (r: FacilityAssessmentAnalytics) => Record<string, number> | null | undefined
     > = {
       preconception_women_identified: (r) => asNumericRecord(r.preconceptionWomenIdentified),
       preconception_interventions: (r) => asNumericRecord(r.preconceptionInterventions),
@@ -476,7 +476,7 @@ export class AnalyticsService {
     }
 
     const flat = rows
-      .map((r) => pick(r as ChcAssessmentAnalytics))
+      .map((r) => pick(r as FacilityAssessmentAnalytics))
       .filter((x): x is Record<string, number> => x !== null && x !== undefined);
     const totals = sumFields(flat, fieldList as unknown as string[]);
 
@@ -487,7 +487,7 @@ export class AnalyticsService {
     );
     const distribution = distributionShares(totals as Record<string, number>, fieldList as unknown as string[]);
 
-    const buckets = this.monthBuckets(rows, (r) => pick(r as ChcAssessmentAnalytics) ?? null);
+    const buckets = this.monthBuckets(rows, (r) => pick(r as FacilityAssessmentAnalytics) ?? null);
     const timeSeries = (fieldList as readonly string[]).map((field) => ({
       field,
       points: buildTimeSeries(
@@ -519,9 +519,9 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_CORRELATIONS_SELECT }>>("correlations", {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CORRELATIONS_SELECT }>>("correlations", {
       where: this.whereClause(f),
-      select: CHC_CORRELATIONS_SELECT,
+      select: CORRELATIONS_SELECT,
       orderBy: { periodStart: "asc" },
     });
     const anemiaPre = rows.map((r) => {
@@ -629,9 +629,9 @@ export class AnalyticsService {
     page = 1,
     pageSize = 25,
   ) {
-    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_ANOMALIES_SELECT }>>("anomalies", {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof ANOMALIES_SELECT }>>("anomalies", {
       where: this.whereClause(f),
-      select: CHC_ANOMALIES_SELECT,
+      select: ANOMALIES_SELECT,
       orderBy: { periodStart: "asc" },
     });
     const values = rows.map((r) => {
@@ -685,7 +685,7 @@ export class AnalyticsService {
 
     const rows = await this.prisma.chcAssessment.findMany({
       where,
-      select: CHC_EXPLORER_SELECT,
+      select: EXPLORER_SELECT,
       orderBy: { periodStart: "asc" },
       skip,
       take: pageSize,
@@ -746,7 +746,7 @@ export class AnalyticsService {
   async assessmentDetail(assessmentId: string) {
     const r = await this.prisma.chcAssessment.findUnique({
       where: { id: assessmentId },
-      include: CHC_ASSESSMENT_ANALYTICS_INCLUDE,
+      include: ASSESSMENT_ANALYTICS_INCLUDE,
     });
     if (!r) throw new NotFoundException(`Assessment not found: ${assessmentId}`);
 
@@ -1078,9 +1078,9 @@ export class AnalyticsService {
     const hit = await this.cache.get(key);
     if (hit) return hit;
 
-    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof CHC_INTELLIGENCE_SELECT }>>("comparison-lab", {
+    const rows = await this.findManyCapped<Prisma.ChcAssessmentGetPayload<{ select: typeof INTELLIGENCE_SELECT }>>("comparison-lab", {
       where: this.whereClause(f),
-      select: CHC_INTELLIGENCE_SELECT,
+      select: INTELLIGENCE_SELECT,
       orderBy: { periodStart: "asc" },
     });
 

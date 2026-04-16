@@ -1,4 +1,4 @@
-import type { ChcAssessmentIntelligenceRow } from "./assessment-selects";
+import type { FacilityAssessmentIntelligenceRow } from "./assessment-selects";
 
 export type ExtractedValue =
   | { kind: "number"; value: number }
@@ -10,7 +10,7 @@ function n(v: number | null | undefined): ExtractedValue | null {
 }
 
 /** Pull one metric value from an intelligence row (same linkage: one assessment). */
-export function extractComparisonMetric(row: ChcAssessmentIntelligenceRow, id: string): ExtractedValue | null {
+export function extractComparisonMetric(row: FacilityAssessmentIntelligenceRow, id: string): ExtractedValue | null {
   const pwrs = row.pregnantWomenRegisteredAndScreened;
   const pwid = row.pregnantWomenIdentified;
   const del = row.deliveryAndOutcomes;

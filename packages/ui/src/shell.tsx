@@ -24,7 +24,7 @@ export function PageShell({
     what: `This page is the ${title} view.`,
     does:
       subtitle ??
-      "It summarizes filtered CHC data, shows the underlying metrics, and helps you take action based on those signals.",
+      "It summarizes filtered facility data, shows the underlying metrics, and helps you take action based on those signals.",
   };
 
   return (

@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "==> Seeding AIDA synthetic data"
-echo "This will reset CHC assessments/facilities and repopulate synthetic rows."
+echo "This will reset facility assessments/facilities and repopulate synthetic rows."
 echo ""
 
 if ! command -v docker >/dev/null 2>&1; then

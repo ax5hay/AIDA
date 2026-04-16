@@ -23,7 +23,7 @@ Single catalog of what the product does (UI, API, packages, and data). Items are
 | **AI insights (`/ai`)** | Optional LLM narratives using the **same filters** as analytics: (1) narrative from **program overview** JSON, (2) narrative from **full intelligence** JSON (`POST /ai/intelligence-insights`), with browser-side opt-in, model selection when LM Studio is configured, and graceful fallbacks when AI is disabled or the model returns nothing. |
 | **Help (`/help`)** | Field-level documentation aligned with Prisma schema, derived metrics, validation rules, API route summary, and page→data mapping. |
 | **Settings (`/settings`)** | Public API/config surface (version, AI flags, default bases) for operators. |
-| **API: `GET /v1/analytics/overview`** | Cached KPIs, funnel, alerts, validation list for filtered `ChcAssessment` rows. |
+| **API: `GET /v1/analytics/overview`** | Cached KPIs, funnel, alerts, validation list for filtered facility assessment rows. |
 | **API: `GET /v1/analytics/section/:section`** | Per-section totals, field metrics, comparative distribution, monthly time series. |
 | **API: `GET /v1/analytics/intelligence`** | Extended public health intelligence payload (pipelines through cross-entity links); cached separately (~60s). |
 | **API: `GET /v1/analytics/decision-support`** | Decision layer only: prioritized actions, composite health score, alerts, what-if, data quality, benchmarks, story steps; cached ~45s. |

@@ -29,6 +29,9 @@ services:
       DATABASE_URL: postgresql://aida:aida@postgres:5432/aida
       WEB_ORIGIN: http://localhost:3000
       API_PORT: "4000"
+      API_BODY_LIMIT: 50mb
+      AI_LLM_CONTEXT_TOKENS: "4096"
+      AI_USER_CONTENT_MAX_CHARS: "6000"
     depends_on:
       postgres:
         condition: service_healthy

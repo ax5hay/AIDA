@@ -2,11 +2,11 @@ import type { Prisma } from "@aida/db";
 
 /**
  * Narrow selects — avoid loading remarks/documents/unused relations for hot paths.
- * Full graph remains on `assessmentDetail` via CHC_ASSESSMENT_ANALYTICS_INCLUDE.
+ * Full graph remains on `assessmentDetail` via ASSESSMENT_ANALYTICS_INCLUDE.
  */
 
 /** Overview KPIs + validation — no remarks/documents/highRisk/infants/postnatal */
-export const CHC_ASSESSMENT_OVERVIEW_SELECT = {
+export const ASSESSMENT_OVERVIEW_SELECT = {
   id: true,
   facilityId: true,
   periodStart: true,
@@ -20,12 +20,12 @@ export const CHC_ASSESSMENT_OVERVIEW_SELECT = {
   deliveryAndOutcomes: true,
 } satisfies Prisma.ChcAssessmentSelect;
 
-export type ChcAssessmentOverviewRow = Prisma.ChcAssessmentGetPayload<{
-  select: typeof CHC_ASSESSMENT_OVERVIEW_SELECT;
+export type FacilityAssessmentOverviewRow = Prisma.ChcAssessmentGetPayload<{
+  select: typeof ASSESSMENT_OVERVIEW_SELECT;
 }>;
 
 /** One section per request — only the relation needed for totals + monthly buckets */
-export const CHC_SECTION_SELECTS: Record<string, Prisma.ChcAssessmentSelect> = {
+export const ASSESSMENT_SECTION_SELECTS: Record<string, Prisma.ChcAssessmentSelect> = {
   preconception_women_identified: {
     id: true,
     periodStart: true,
@@ -78,7 +78,7 @@ export const CHC_SECTION_SELECTS: Record<string, Prisma.ChcAssessmentSelect> = {
   },
 };
 
-export const CHC_CORRELATIONS_SELECT = {
+export const CORRELATIONS_SELECT = {
   id: true,
   periodStart: true,
   preconceptionWomenIdentified: {
@@ -101,11 +101,11 @@ export const CHC_CORRELATIONS_SELECT = {
   deliveryAndOutcomes: { select: { live_births: true } },
 } satisfies Prisma.ChcAssessmentSelect;
 
-export type ChcAssessmentCorrelationsRow = Prisma.ChcAssessmentGetPayload<{
-  select: typeof CHC_CORRELATIONS_SELECT;
+export type FacilityAssessmentCorrelationsRow = Prisma.ChcAssessmentGetPayload<{
+  select: typeof CORRELATIONS_SELECT;
 }>;
 
-export const CHC_ANOMALIES_SELECT = {
+export const ANOMALIES_SELECT = {
   id: true,
   deliveryAndOutcomes: {
     select: {
@@ -116,7 +116,7 @@ export const CHC_ANOMALIES_SELECT = {
   facility: { select: { name: true } },
 } satisfies Prisma.ChcAssessmentSelect;
 
-export const CHC_EXPLORER_SELECT = {
+export const EXPLORER_SELECT = {
   id: true,
   facilityId: true,
   periodStart: true,
@@ -142,12 +142,12 @@ export const CHC_EXPLORER_SELECT = {
   deliveryAndOutcomes: { select: { live_births: true, maternal_deaths: true } },
 } satisfies Prisma.ChcAssessmentSelect;
 
-export type ChcAssessmentExplorerRow = Prisma.ChcAssessmentGetPayload<{
-  select: typeof CHC_EXPLORER_SELECT;
+export type FacilityAssessmentExplorerRow = Prisma.ChcAssessmentGetPayload<{
+  select: typeof EXPLORER_SELECT;
 }>;
 
 /** Full analytic graph for public health intelligence (pipelines, gaps, cohorts, links) */
-export const CHC_INTELLIGENCE_SELECT = {
+export const INTELLIGENCE_SELECT = {
   id: true,
   periodStart: true,
   facility: { select: { district: true, state: true, name: true } },
@@ -163,6 +163,6 @@ export const CHC_INTELLIGENCE_SELECT = {
   postnatalWomen: true,
 } satisfies Prisma.ChcAssessmentSelect;
 
-export type ChcAssessmentIntelligenceRow = Prisma.ChcAssessmentGetPayload<{
-  select: typeof CHC_INTELLIGENCE_SELECT;
+export type FacilityAssessmentIntelligenceRow = Prisma.ChcAssessmentGetPayload<{
+  select: typeof INTELLIGENCE_SELECT;
 }>;

@@ -27,7 +27,7 @@ export default function AnalyticsHubPage() {
       eyebrow="Deterministic intelligence"
       subtitle="Program-wide analytics for every section in the database that matches your filters: intelligence pipelines, KPI evidence, district rollups, paired scatters, and correlation matrices — not a single-topic dashboard."
       explainer={{
-        what: "The deep analytics workspace for the full filtered CHC corpus.",
+        what: "The deep analytics workspace for the full filtered facility assessment corpus.",
         does: "Layers modules (intelligence → KPIs → districts → scatters → matrix) so you can move from narrative signals to numeric proof using consistent denominators.",
       }}
     >

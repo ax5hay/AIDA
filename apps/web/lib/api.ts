@@ -1,6 +1,7 @@
 import type { AnalyticsFilters } from "./query-params";
 import { filtersToSearchParams } from "./query-params";
 import type {
+  AiInsightsResponse,
   AiIntelligenceInsightsResponse,
   AnomaliesResponse,
   AssessmentDetailResponse,
@@ -29,6 +30,11 @@ function q(filters?: AnalyticsFilters): string {
 async function parseJson<T>(res: Response, label: string): Promise<T> {
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 413) {
+      throw new Error(
+        `${label}: request body too large for the API (increase API_BODY_LIMIT on the server, or narrow filters to reduce snapshot size). ${text.slice(0, 120)}`,
+      );
+    }
     throw new Error(`${label} ${res.status}: ${text.slice(0, 200)}`);
   }
   const raw = await res.text();
@@ -135,7 +141,7 @@ export async function postAiInsights(
     body: JSON.stringify({ snapshot, model: opts?.model }),
     signal: opts?.signal,
   });
-  return parseJson<{ enabled: boolean; text: string | null }>(res, "ai insights");
+  return parseJson<AiInsightsResponse>(res, "ai insights");
 }
 
 export async function postAiIntelligenceInsights(

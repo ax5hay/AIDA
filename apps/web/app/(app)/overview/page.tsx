@@ -74,7 +74,7 @@ export default function OverviewPage() {
       eyebrow="Decision intelligence"
       subtitle="One place to see how much data you have, where it sits in time and geography, and how key programme rates look — every percentage below names its denominator."
       explainer={{
-        what: "The executive dashboard for the filtered CHC assessment corpus.",
+        what: "The executive dashboard for the filtered facility assessment corpus.",
         does: "Aggregates all matching monthly facility rows: coverage, ANC screening numerators over Σ total_anc_registered, and outcome events over live births where applicable.",
       }}
     >

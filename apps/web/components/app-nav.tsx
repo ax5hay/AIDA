@@ -111,7 +111,7 @@ export function AppNav() {
               AIDA
             </Link>
             <p className="mt-2 text-[10px] leading-snug text-zinc-600">
-              CHC intelligence · one filter, every surface
+              Health facility intelligence · one filter, every surface
             </p>
           </div>
 

@@ -1,11 +1,18 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import compression from "compression";
+import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
 
+/** Default Express JSON limit is ~100kb; AI routes POST full intelligence / overview snapshots. */
+const BODY_LIMIT = process.env.API_BODY_LIMIT ?? "50mb";
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  app.use(json({ limit: BODY_LIMIT }));
+  app.use(urlencoded({ extended: true, limit: BODY_LIMIT }));
   app.use(compression({ level: 6, threshold: 1024 }));
   app.setGlobalPrefix("v1");
   app.enableCors({

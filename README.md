@@ -10,7 +10,7 @@
 
 # AIDA
 
-CHC reporting data turned into something you can actually brief from: screening coverage, cohort gaps, district rollups, and a thin optional LLM layer that only ever narrates numbers the API already computed.
+Health facility reporting data turned into something you can actually brief from: screening coverage, cohort gaps, district rollups, and a thin optional LLM layer that only ever narrates numbers the API already computed.
 
 The UI never opens a database connection. Everything goes **Postgres → Prisma (`@aida/db`) → Nest API → Next.js**, with aggregations and derived metrics living in **`@aida/analytics-engine`** so the math stays in one place and the UI stays dumb.
 
@@ -18,13 +18,13 @@ The UI never opens a database connection. Everything goes **Postgres → Prisma 
 
 ## Why this exists (use case)
 
-State and district CHC programs collect **monthly assessment rows per facility**: who was identified vs managed, what got screened against ANC registration, deliveries, neonatal signals, postnatal follow-up, and so on. The raw tables are hard to defend in a meeting if you cannot tie them to **rates**, **gaps** (identified minus managed on the same condition keys), and **time-bounded views** (filter by period, district, facility).
+State and district programs collect **monthly assessment rows per health facility**: who was identified vs managed, what got screened against ANC registration, deliveries, neonatal signals, postnatal follow-up, and so on. The raw tables are hard to defend in a meeting if you cannot tie them to **rates**, **gaps** (identified minus managed on the same condition keys), and **time-bounded views** (filter by period, district, facility).
 
 AIDA is built around that workflow:
 
 | Idea | What the stack does |
 |------|----------------------|
-| **One row = one facility × reporting window** | `ChcAssessment` keyed by `facilityId` + `periodStart` / `periodEnd`. Filters on the API (`from` / `to` / `district` / `facilityId`) slice the same rows the dashboard uses. |
+| **One row = one facility × reporting window** | Facility assessment rows keyed by `facilityId` + `periodStart` / `periodEnd`. Filters on the API (`from` / `to` / `district` / `facilityId`) slice the same rows the dashboard uses. |
 | **ANC screening as coverage** | Counts like `hiv_tested` are divided by summed `total_anc_registered` to produce screening rates (see `screeningRates` in the analytics engine). |
 | **Identified vs managed** | Separate section tables; the API exposes `management_gap` and validation that managed counts do not exceed identified where the schema implies that constraint. |
 | **Exploratory stats** | Pearson correlations and z-score anomalies on top of assessment-level series (`@aida/ml-engine`), clearly separated from the deterministic KPIs. |

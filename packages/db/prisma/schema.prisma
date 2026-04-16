@@ -1,4 +1,4 @@
-// CHC Assessment — schema is the single source of truth. Field names MUST NOT be renamed.
+// Health facility assessment — schema is the single source of truth. Field names MUST NOT be renamed.
 generator client {
   provider = "prisma-client-js"
 }

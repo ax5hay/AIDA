@@ -39,7 +39,7 @@ import {
 } from "@aida/ml-engine";
 
 import type { ExplorerFilters } from "./analytics-filters";
-import type { ChcAssessmentIntelligenceRow } from "./assessment-selects";
+import type { FacilityAssessmentIntelligenceRow } from "./assessment-selects";
 
 function monthKey(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -55,12 +55,12 @@ function sumSchemaFields(obj: object, keys: readonly string[]): number {
   return s;
 }
 
-function aggregateRowsByMonth(rows: ChcAssessmentIntelligenceRow[]): Array<{
+function aggregateRowsByMonth(rows: FacilityAssessmentIntelligenceRow[]): Array<{
   month: string;
   periodStart: string;
-  rows: ChcAssessmentIntelligenceRow[];
+  rows: FacilityAssessmentIntelligenceRow[];
 }> {
-  const map = new Map<string, ChcAssessmentIntelligenceRow[]>();
+  const map = new Map<string, FacilityAssessmentIntelligenceRow[]>();
   for (const r of rows) {
     const k = monthKey(r.periodStart);
     if (!map.has(k)) map.set(k, []);
@@ -76,7 +76,7 @@ function aggregateRowsByMonth(rows: ChcAssessmentIntelligenceRow[]): Array<{
 }
 
 export function buildPublicHealthIntelligence(
-  rows: ChcAssessmentIntelligenceRow[],
+  rows: FacilityAssessmentIntelligenceRow[],
   f: ExplorerFilters,
 ) {
   const preIdRows = rows.map((r) => r.preconceptionWomenIdentified).filter(Boolean) as object[];

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cn } from "@aida/ui";
 import {
   HELP_API_ROUTES,
-  HELP_CHC_ASSESSMENT,
+  HELP_ASSESSMENT,
   HELP_DELIVERY_OUTCOMES,
   HELP_DOCUMENTS,
   HELP_DERIVED_METRICS,
@@ -155,7 +155,7 @@ export function HelpDocs({ className }: { className?: string }) {
       <section id="model" className="scroll-mt-28">
         <h2 className="mt-14 text-lg font-semibold text-white">Facility & assessment shell</h2>
         <FieldTable title="Facility" rows={HELP_FACILITY} model="Facility" />
-        <FieldTable title="ChcAssessment" rows={HELP_CHC_ASSESSMENT} model="ChcAssessment" />
+        <FieldTable title="Facility assessment" rows={HELP_ASSESSMENT} model="assessment row" />
       </section>
 
       <section id="sections" className="scroll-mt-28">

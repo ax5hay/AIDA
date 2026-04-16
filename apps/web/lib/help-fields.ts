@@ -12,7 +12,7 @@ export type HelpField = {
 export const HELP_INTRO = {
   title: "How AIDA uses your data",
   paragraphs: [
-    "Each **ChcAssessment** row is one reporting window (typically monthly) for one **Facility**. Count columns are non‑negative integers: they sum women, events, or tests recorded in that window for that facility—unless the field is explicitly a rate computed in the analytics engine.",
+    "Each **facility assessment** row is one reporting window (typically monthly) for one **health facility**. Count columns are non‑negative integers: they sum women, events, or tests recorded in that window for that facility—unless the field is explicitly a rate computed in the analytics engine.",
     "Whenever you see a **percentage in Overview or Analytics**, look for the **denominator line** under the headline value: ANC screening rates use **Σ total_anc_registered** across filtered rows; mortality and LBW/preterm use **live births**; distribution bars under a section use **that section’s internal total** (not ANC unless stated).",
     "Optional **section relations** (e.g. `preconceptionWomenIdentified`) may be missing on a row. Analytics treats a missing section as **no contribution** for that section’s sums for that assessment (equivalent to zero counts).",
     "The **analytics engine** (`@aida/analytics-engine`) aggregates rows that match URL filters (`from`, `to` on `periodStart`, optional `district`, `facilityId`). It sums fields across rows, derives ratios where formulas are fixed in code, and runs logical validation. The **API** (`AnalyticsService`) exposes overview KPIs, per‑section rollups, correlations, district rollups, scatters, explorer listings, assessment detail, the extended **`/analytics/intelligence`** bundle, and **`/analytics/decision-support`** (prioritized actions, health score, alerts, what‑if, quality, benchmarks, story mode).",
@@ -23,7 +23,7 @@ export const HELP_INTRO = {
 export const HELP_FILTERS: HelpField[] = [
   {
     name: "from / to",
-    meaning: "ISO date bounds applied to ChcAssessment.periodStart (inclusive range via Prisma where).",
+    meaning: "ISO date bounds applied to the assessment row’s periodStart (inclusive range via Prisma where).",
     usedIn: "All analytics routes; URL query params preserved for shareable links.",
   },
   {
@@ -46,7 +46,7 @@ export const HELP_FACILITY: HelpField[] = [
   { name: "createdAt", meaning: "Record creation time.", usedIn: "DB / ops only (not shown in analytics UI)." },
 ];
 
-export const HELP_CHC_ASSESSMENT: HelpField[] = [
+export const HELP_ASSESSMENT: HelpField[] = [
   { name: "id", meaning: "Primary key for one assessment (cuid).", usedIn: "Explorer links, correlation series keys, anomaly pointers." },
   { name: "facilityId", meaning: "FK to Facility.", usedIn: "All joins and explorer rows." },
   { name: "periodStart", meaning: "Start of reporting window (stored as DateTime).", usedIn: "Filter window, monthly time buckets for section charts." },

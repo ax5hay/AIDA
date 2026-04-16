@@ -13,6 +13,8 @@ import {
 } from "@/lib/api";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { AnalyticsFilterBar } from "@/components/analytics-filter-bar";
+import { AiNarrative } from "@/components/ai-narrative";
+import { AiMitigationPanel } from "@/components/ai-mitigation-panel";
 import { useAiPreferences } from "@/hooks/use-ai-preferences";
 import { useEffect, useState } from "react";
 import { cn } from "@aida/ui";
@@ -75,6 +77,11 @@ export default function AiPage() {
         model: config.data?.lmStudioConfigured ? selectedModel : undefined,
       }),
     onSuccess: (d) => {
+      if (d.llmError) {
+        setError(d.llmError);
+        setText(null);
+        return;
+      }
       setError(null);
       setText(d.text);
     },
@@ -90,17 +97,17 @@ export default function AiPage() {
         model: config.data?.lmStudioConfigured ? selectedModel : undefined,
       }),
     onSuccess: (d) => {
-      setIntelError(null);
       if (d.llm) {
+        setIntelError(null);
         setIntelText(d.llm);
         return;
       }
       if (d.llmError) {
-        setIntelText(
-          `LLM unavailable (${d.llmError}). The API still returns deterministic insight objects — use Analytics suite or GET /analytics/intelligence.`,
-        );
+        setIntelError(d.llmError);
+        setIntelText(null);
         return;
       }
+      setIntelError(null);
       if (!d.enabled) {
         setIntelText(
           "Server AI is disabled. Full deterministic intelligence (pipelines, gaps, what/why/next) is available from the Analytics suite without an LLM.",
@@ -241,9 +248,9 @@ export default function AiPage() {
       {error ? (
         <p className="mt-6 text-sm text-rose-400">{error}</p>
       ) : text ? (
-        <pre className="mt-8 whitespace-pre-wrap rounded-xl border border-white/10 bg-black/40 p-5 text-sm leading-relaxed text-zinc-300">
-          {text}
-        </pre>
+        <div className="mt-8 rounded-xl border border-white/10 bg-black/40 p-5">
+          <AiNarrative text={text} />
+        </div>
       ) : (
         <p className="mt-8 text-sm text-zinc-500">
           {!serverOn
@@ -253,17 +260,35 @@ export default function AiPage() {
               : "Run overview generation to produce an executive-style narrative for the current filters."}
         </p>
       )}
+      <AiMitigationPanel
+        mitigation={m.data?.mitigation}
+        title="Overview — prompt shaping"
+        accent="cyan"
+        className="mt-4"
+      />
 
       {intelError ? (
-        <p className="mt-8 text-sm text-rose-400">{intelError}</p>
+        <div className="mt-8 space-y-3">
+          <p className="text-sm text-rose-400">{intelError}</p>
+          <p className="text-xs text-zinc-500">
+            Deterministic blocks are still in Analytics → Public health intelligence. The panel below shows what was
+            sent to the model after server-side shortening.
+          </p>
+        </div>
       ) : intelText ? (
         <div className="mt-8 space-y-2">
           <p className="text-xs font-medium uppercase tracking-wide text-violet-400/90">Intelligence narrative</p>
-          <pre className="whitespace-pre-wrap rounded-xl border border-violet-500/20 bg-violet-950/20 p-5 text-sm leading-relaxed text-zinc-300">
-            {intelText}
-          </pre>
+          <div className="rounded-xl border border-violet-500/20 bg-violet-950/20 p-5">
+            <AiNarrative text={intelText} />
+          </div>
         </div>
       ) : null}
+      <AiMitigationPanel
+        mitigation={mIntel.data?.mitigation}
+        title="Intelligence — prompt shaping"
+        accent="violet"
+        className="mt-4"
+      />
     </PageShell>
   );
 }

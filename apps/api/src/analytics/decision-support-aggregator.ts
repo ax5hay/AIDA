@@ -7,12 +7,12 @@ import {
 } from "@aida/analytics-engine";
 import { buildPublicHealthIntelligence } from "./intelligence-aggregator";
 import type { ExplorerFilters } from "./analytics-filters";
-import type { ChcAssessmentIntelligenceRow } from "./assessment-selects";
+import type { FacilityAssessmentIntelligenceRow } from "./assessment-selects";
 
 export type IntelligencePayload = ReturnType<typeof buildPublicHealthIntelligence>;
 
 /** % of rows missing ANC registered or delivery section */
-export function missingCoreSectionsPct(rows: ChcAssessmentIntelligenceRow[]): number {
+export function missingCoreSectionsPct(rows: FacilityAssessmentIntelligenceRow[]): number {
   if (rows.length === 0) return 0;
   let n = 0;
   for (const r of rows) {
@@ -22,7 +22,7 @@ export function missingCoreSectionsPct(rows: ChcAssessmentIntelligenceRow[]): nu
 }
 
 export function buildDecisionSupportBundle(
-  rows: ChcAssessmentIntelligenceRow[],
+  rows: FacilityAssessmentIntelligenceRow[],
   intel: IntelligencePayload,
   validationIssueCount: number,
   f: ExplorerFilters,

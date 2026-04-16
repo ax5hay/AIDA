@@ -8,7 +8,7 @@ config({ path: join(__dirname, "../../../.env") });
 
 const prisma = new PrismaClient();
 
-/** 40 facilities × 50 months = 2000 CHC assessment rows */
+/** 40 facilities × 50 months = 2000 facility assessment rows */
 const TARGET_ASSESSMENTS = 2000;
 const MONTHS_SPAN = TARGET_ASSESSMENTS / 40;
 
@@ -29,48 +29,48 @@ function min(a: number, b: number) {
   return Math.min(a, b);
 }
 
-/** Indian CHC / block PHC style units — names, districts, states */
+/** Indian health facilities — sample names, districts, states */
 const INDIAN_FACILITIES: ReadonlyArray<{ name: string; district: string; state: string }> = [
-  { name: "CHC Ramnagar", district: "Varanasi", state: "Uttar Pradesh" },
-  { name: "CHC Malkapur", district: "Solapur", state: "Maharashtra" },
-  { name: "CHC Hubli Rural", district: "Dharwad", state: "Karnataka" },
-  { name: "CHC Tirur", district: "Malappuram", state: "Kerala" },
-  { name: "CHC Mannargudi", district: "Tiruvarur", state: "Tamil Nadu" },
-  { name: "CHC Baran", district: "Baran", state: "Rajasthan" },
-  { name: "CHC Sehore", district: "Sehore", state: "Madhya Pradesh" },
-  { name: "CHC Nalbari", district: "Nalbari", state: "Assam" },
-  { name: "CHC Anand", district: "Anand", state: "Gujarat" },
-  { name: "CHC Berhampur", district: "Ganjam", state: "Odisha" },
-  { name: "CHC Krishnanagar", district: "Nadia", state: "West Bengal" },
-  { name: "CHC Motihari", district: "East Champaran", state: "Bihar" },
-  { name: "CHC Rewari", district: "Rewari", state: "Haryana" },
-  { name: "CHC Jagdalpur", district: "Bastar", state: "Chhattisgarh" },
-  { name: "CHC Srikakulam", district: "Srikakulam", state: "Andhra Pradesh" },
-  { name: "CHC Dibrugarh", district: "Dibrugarh", state: "Assam" },
-  { name: "CHC Sangrur", district: "Sangrur", state: "Punjab" },
-  { name: "CHC Shimla Rural", district: "Shimla", state: "Himachal Pradesh" },
-  { name: "CHC Udhampur", district: "Udhampur", state: "Jammu and Kashmir" },
-  { name: "CHC Namchi", district: "Namchi", state: "Sikkim" },
-  { name: "CHC Pasighat", district: "East Siang", state: "Arunachal Pradesh" },
-  { name: "CHC Kolasib", district: "Kolasib", state: "Mizoram" },
-  { name: "CHC Dimapur", district: "Dimapur", state: "Nagaland" },
-  { name: "CHC Agartala Rural", district: "West Tripura", state: "Tripura" },
-  { name: "CHC Imphal West", district: "Imphal West", state: "Manipur" },
-  { name: "CHC Shillong", district: "East Khasi Hills", state: "Meghalaya" },
-  { name: "CHC Aizawl", district: "Aizawl", state: "Mizoram" },
-  { name: "CHC Kohima", district: "Kohima", state: "Nagaland" },
-  { name: "CHC Panaji Rural", district: "North Goa", state: "Goa" },
-  { name: "CHC Ranchi Sadar", district: "Ranchi", state: "Jharkhand" },
-  { name: "CHC Raipur Urban", district: "Raipur", state: "Chhattisgarh" },
-  { name: "CHC Gwalior Rural", district: "Gwalior", state: "Madhya Pradesh" },
-  { name: "CHC Ajmer Block", district: "Ajmer", state: "Rajasthan" },
-  { name: "CHC Mysuru Rural", district: "Mysuru", state: "Karnataka" },
-  { name: "CHC Thiruvananthapuram", district: "Thiruvananthapuram", state: "Kerala" },
-  { name: "CHC Coimbatore North", district: "Coimbatore", state: "Tamil Nadu" },
-  { name: "CHC Nashik Rural", district: "Nashik", state: "Maharashtra" },
-  { name: "CHC Prayagraj", district: "Prayagraj", state: "Uttar Pradesh" },
-  { name: "CHC Patna Rural", district: "Patna", state: "Bihar" },
-  { name: "CHC Howrah", district: "Howrah", state: "West Bengal" },
+  { name: "Health facility Ramnagar", district: "Varanasi", state: "Uttar Pradesh" },
+  { name: "Health facility Malkapur", district: "Solapur", state: "Maharashtra" },
+  { name: "Health facility Hubli Rural", district: "Dharwad", state: "Karnataka" },
+  { name: "Health facility Tirur", district: "Malappuram", state: "Kerala" },
+  { name: "Health facility Mannargudi", district: "Tiruvarur", state: "Tamil Nadu" },
+  { name: "Health facility Baran", district: "Baran", state: "Rajasthan" },
+  { name: "Health facility Sehore", district: "Sehore", state: "Madhya Pradesh" },
+  { name: "Health facility Nalbari", district: "Nalbari", state: "Assam" },
+  { name: "Health facility Anand", district: "Anand", state: "Gujarat" },
+  { name: "Health facility Berhampur", district: "Ganjam", state: "Odisha" },
+  { name: "Health facility Krishnanagar", district: "Nadia", state: "West Bengal" },
+  { name: "Health facility Motihari", district: "East Champaran", state: "Bihar" },
+  { name: "Health facility Rewari", district: "Rewari", state: "Haryana" },
+  { name: "Health facility Jagdalpur", district: "Bastar", state: "Chhattisgarh" },
+  { name: "Health facility Srikakulam", district: "Srikakulam", state: "Andhra Pradesh" },
+  { name: "Health facility Dibrugarh", district: "Dibrugarh", state: "Assam" },
+  { name: "Health facility Sangrur", district: "Sangrur", state: "Punjab" },
+  { name: "Health facility Shimla Rural", district: "Shimla", state: "Himachal Pradesh" },
+  { name: "Health facility Udhampur", district: "Udhampur", state: "Jammu and Kashmir" },
+  { name: "Health facility Namchi", district: "Namchi", state: "Sikkim" },
+  { name: "Health facility Pasighat", district: "East Siang", state: "Arunachal Pradesh" },
+  { name: "Health facility Kolasib", district: "Kolasib", state: "Mizoram" },
+  { name: "Health facility Dimapur", district: "Dimapur", state: "Nagaland" },
+  { name: "Health facility Agartala Rural", district: "West Tripura", state: "Tripura" },
+  { name: "Health facility Imphal West", district: "Imphal West", state: "Manipur" },
+  { name: "Health facility Shillong", district: "East Khasi Hills", state: "Meghalaya" },
+  { name: "Health facility Aizawl", district: "Aizawl", state: "Mizoram" },
+  { name: "Health facility Kohima", district: "Kohima", state: "Nagaland" },
+  { name: "Health facility Panaji Rural", district: "North Goa", state: "Goa" },
+  { name: "Health facility Ranchi Sadar", district: "Ranchi", state: "Jharkhand" },
+  { name: "Health facility Raipur Urban", district: "Raipur", state: "Chhattisgarh" },
+  { name: "Health facility Gwalior Rural", district: "Gwalior", state: "Madhya Pradesh" },
+  { name: "Health facility Ajmer Block", district: "Ajmer", state: "Rajasthan" },
+  { name: "Health facility Mysuru Rural", district: "Mysuru", state: "Karnataka" },
+  { name: "Health facility Thiruvananthapuram", district: "Thiruvananthapuram", state: "Kerala" },
+  { name: "Health facility Coimbatore North", district: "Coimbatore", state: "Tamil Nadu" },
+  { name: "Health facility Nashik Rural", district: "Nashik", state: "Maharashtra" },
+  { name: "Health facility Prayagraj", district: "Prayagraj", state: "Uttar Pradesh" },
+  { name: "Health facility Patna Rural", district: "Patna", state: "Bihar" },
+  { name: "Health facility Howrah", district: "Howrah", state: "West Bengal" },
 ];
 
 const OBSERVATIONAL_REMARKS = [
@@ -293,7 +293,7 @@ async function main() {
   const count = await prisma.chcAssessment.count();
   // eslint-disable-next-line no-console
   console.log(
-    `Seeded ${facilities.length} Indian facilities × ${MONTHS_SPAN} months = ${count} CHC assessments (target ${TARGET_ASSESSMENTS}).`,
+    `Seeded ${facilities.length} Indian facilities × ${MONTHS_SPAN} months = ${count} facility assessments (target ${TARGET_ASSESSMENTS}).`,
   );
   if (count !== TARGET_ASSESSMENTS) {
     throw new Error(`Expected ${TARGET_ASSESSMENTS} assessments, got ${count}`);

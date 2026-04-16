@@ -425,11 +425,34 @@ export type PublicHealthIntelligenceResponse = {
   };
 };
 
+/** Server-side LLM prompt shaping (what was sent vs dropped for context limits). */
+export type PromptMitigationReportDto = {
+  originalChars: number;
+  sentChars: number;
+  estimatedUserTokens: number;
+  estimatedFullPromptTokens: number;
+  budgetChars: number;
+  budgetTokensApprox: number;
+  llmContextTokens: number;
+  reserveTokens: number;
+  steps: string[];
+  omittedKeys: string[];
+  systemPromptCharsApprox: number;
+};
+
+export type AiInsightsResponse = {
+  enabled: boolean;
+  text: string | null;
+  llmError?: string;
+  mitigation?: PromptMitigationReportDto;
+};
+
 export type AiIntelligenceInsightsResponse = {
   enabled: boolean;
   deterministic: unknown;
   llm: string | null;
   llmError?: string;
+  mitigation?: PromptMitigationReportDto;
 };
 
 /** `/analytics/decision-support` — decision layer (actions, score, alerts, what-if, quality, benchmarks, story) */

@@ -25,7 +25,7 @@ const pillars = [
 ] as const;
 
 const flows = [
-  { step: "01", title: "Ingest", desc: "Monthly CHC assessments tied to facilities and reporting windows." },
+  { step: "01", title: "Ingest", desc: "Monthly facility assessments tied to health facilities and reporting windows." },
   { step: "02", title: "Aggregate", desc: "Deterministic engine: screening rates, funnels, outcomes, validation." },
   { step: "03", title: "Decide", desc: "Overview, analytics suite, and optional AI on the same snapshots." },
 ] as const;
@@ -47,7 +47,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-3">
           <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.32em] text-cyan-400/95">AIDA</span>
           <span className="hidden h-4 w-px bg-white/10 sm:block" />
-          <span className="hidden text-[11px] uppercase tracking-widest text-zinc-600 sm:block">CHC intelligence</span>
+          <span className="hidden text-[11px] uppercase tracking-widest text-zinc-600 sm:block">Health facility intelligence</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <Link

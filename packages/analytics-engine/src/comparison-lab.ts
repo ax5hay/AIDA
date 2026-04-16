@@ -381,7 +381,7 @@ export function buildInsightSummary(params: {
   return `Analysis over ${n} rows for ${labelA} and ${labelB}.`;
 }
 
-/** Registry — all metrics are per ChcAssessment row (individual level). */
+/** Registry — all metrics are per facility assessment row (individual level). */
 export const COMPARISON_METRICS: ComparisonMetricDef[] = [
   {
     id: "meta.period_month",
