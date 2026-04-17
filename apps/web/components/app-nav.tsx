@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiximiusMark, cn } from "@aida/ui";
+import { AppNavRailProvider } from "@/components/app-nav-context";
+import { DecisionSupportDock } from "@/components/decision-support-dock";
 
 type NavItem = { href: string; label: string };
 
@@ -77,7 +79,7 @@ function isCategoryActive(pathname: string | null, items: NavItem[]): boolean {
   return items.some((item) => isNavActive(pathname, item.href));
 }
 
-export function AppNav() {
+export function AppNavLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
@@ -115,14 +117,16 @@ export function AppNav() {
   const aiActive = aiNavItem ? isNavActive(pathname, aiNavItem.href) : false;
 
   return (
-    <>
-      {/* Desktop: orbital rail */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-[60] hidden h-screen w-[272px] flex-col border-r border-white/[0.07] bg-[#05060a]/95 backdrop-blur-2xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)] md:flex",
-          !railOpen && "md:w-0 md:overflow-hidden md:border-0 md:opacity-0",
-        )}
-      >
+    <AppNavRailProvider railOpen={railOpen}>
+      {/* flex row: rail + main (in-flow rail so page content is never covered on desktop) */}
+      <div className="relative flex min-h-screen flex-col md:flex-row">
+        {/* Desktop: orbital rail */}
+        <aside
+          className={cn(
+            "hidden flex-col border-r border-white/[0.07] bg-[#05060a]/95 backdrop-blur-2xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)] md:sticky md:top-0 md:z-10 md:flex md:h-[100dvh] md:shrink-0 md:self-start",
+            railOpen ? "md:w-[272px]" : "md:w-0 md:overflow-hidden md:border-0 md:opacity-0",
+          )}
+        >
         <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-cyan-500/40 via-violet-500/30 to-fuchsia-500/20" />
         <div className="flex h-full flex-col px-3 pb-6 pt-6">
           <div className="px-2">
@@ -183,39 +187,44 @@ export function AppNav() {
             </div>
           </div>
         </div>
-      </aside>
+        </aside>
 
-      {/* Collapsed rail tab (desktop) */}
-      {!railOpen ? (
-        <button
-          type="button"
-          onClick={() => setRailOpen(true)}
-          className="fixed left-0 top-1/2 z-[59] hidden -translate-y-1/2 rounded-r-lg border border-l-0 border-white/10 bg-[#0a0b10]/95 px-1.5 py-6 text-[10px] font-medium uppercase tracking-widest text-cyan-400/80 shadow-lg backdrop-blur md:block"
-        >
-          Menu
-        </button>
-      ) : null}
-
-      {/* Mobile / sm top bar */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07080c]/90 backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)] md:hidden">
-        <div className="flex items-center gap-2 px-4 py-3">
-          <Link href={hrefWithQuery("/overview", qs)} className="font-mono text-[10px] font-semibold tracking-[0.2em] text-cyan-400/90">
-            AIDA
-          </Link>
-          <span className="min-w-0 flex-1 truncate text-center text-xs text-zinc-500">{currentLabel}</span>
+        {/* Collapsed rail tab (desktop) */}
+        {!railOpen ? (
           <button
             type="button"
-            className="min-h-[44px] min-w-[44px] rounded-lg border border-white/10 bg-white/5 text-xs font-medium text-zinc-200"
-            aria-expanded={drawerOpen}
-            onClick={() => {
-              setMobileCategorySheet(null);
-              setDrawerOpen(true);
-            }}
+            onClick={() => setRailOpen(true)}
+            className="fixed left-0 top-1/2 z-[59] hidden -translate-y-1/2 rounded-r-lg border border-l-0 border-white/10 bg-[#0a0b10]/95 px-1.5 py-6 text-[10px] font-medium uppercase tracking-widest text-cyan-400/80 shadow-lg backdrop-blur md:block"
           >
             Menu
           </button>
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Mobile / sm top bar */}
+          <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07080c]/90 backdrop-blur-xl supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)] md:hidden">
+            <div className="flex items-center gap-2 px-4 py-3">
+              <Link href={hrefWithQuery("/overview", qs)} className="font-mono text-[10px] font-semibold tracking-[0.2em] text-cyan-400/90">
+                AIDA
+              </Link>
+              <span className="min-w-0 flex-1 truncate text-center text-xs text-zinc-500">{currentLabel}</span>
+              <button
+                type="button"
+                className="min-h-[44px] min-w-[44px] rounded-lg border border-white/10 bg-white/5 text-xs font-medium text-zinc-200"
+                aria-expanded={drawerOpen}
+                onClick={() => {
+                  setMobileCategorySheet(null);
+                  setDrawerOpen(true);
+                }}
+              >
+                Menu
+              </button>
+            </div>
+          </header>
+
+          {children}
         </div>
-      </header>
+      </div>
 
       {/* Mobile bottom dock: categories + AI (System settings/help stay in header Menu) */}
       <nav className="fixed inset-x-0 bottom-0 z-[70] border-t border-white/10 bg-[#07080c]/95 backdrop-blur-xl md:hidden supports-[padding:max(0px)]:pb-[env(safe-area-inset-bottom)]">
@@ -379,9 +388,7 @@ export function AppNav() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </>
+      <DecisionSupportDock />
+    </AppNavRailProvider>
   );
 }
-
-/** Left offset so page content clears the fixed rail on desktop */
-export const APP_SIDEBAR_WIDTH_CLASS = "md:pl-[272px]";

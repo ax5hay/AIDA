@@ -7,7 +7,7 @@ import { getDecisionSupport } from "@/lib/api";
 import { useAnalyticsFilters } from "@/hooks/use-analytics-filters";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
 import { cn } from "@aida/ui";
-import { APP_SIDEBAR_WIDTH_CLASS } from "@/components/app-nav";
+import { useAppNavRailOffsetClass } from "@/components/app-nav-context";
 
 type Tab = "actions" | "score" | "alerts" | "whatif" | "quality" | "compare" | "story";
 
@@ -22,6 +22,7 @@ const TABS: Array<[Tab, string, string]> = [
 ];
 
 export function DecisionSupportDock() {
+  const railOffsetClass = useAppNavRailOffsetClass();
   const { filters, filtersKey } = useAnalyticsFilters();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("actions");
@@ -38,7 +39,7 @@ export function DecisionSupportDock() {
 
   return (
     <div
-      className={`pointer-events-none fixed inset-x-0 z-[65] flex justify-center px-2 pt-1 sm:px-4 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-0 ${APP_SIDEBAR_WIDTH_CLASS}`}
+      className={`pointer-events-none fixed inset-x-0 z-[65] flex justify-center px-2 pt-1 sm:px-4 max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:bottom-0 ${railOffsetClass}`}
     >
       <div className="pointer-events-auto w-full max-w-4xl">
         <button
