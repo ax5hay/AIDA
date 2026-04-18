@@ -10,13 +10,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
+import { TABLE_PAGE_SIZE_OPTIONS, parseTablePageSize, type TablePageSize } from "@/lib/table-pagination";
 
 export default function ExplorerPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-  const pageSize = Math.max(1, Number(searchParams.get("pageSize") ?? "200") || 200);
+  const pageSize = parseTablePageSize(searchParams.get("pageSize"), 10);
   const qs = searchParams.toString();
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
 
@@ -30,6 +31,13 @@ export default function ExplorerPage() {
     const p = new URLSearchParams(searchParams.toString());
     p.set("page", String(nextPage));
     p.set("pageSize", String(pageSize));
+    router.replace(`${pathname}?${p.toString()}`);
+  };
+
+  const setPageSize = (next: TablePageSize) => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("pageSize", String(next));
+    p.set("page", "1");
     router.replace(`${pathname}?${p.toString()}`);
   };
 
@@ -116,7 +124,21 @@ export default function ExplorerPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-zinc-500">
+              <span className="shrink-0">Rows per page</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value) as TablePageSize)}
+                className="min-h-[40px] rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-sm text-zinc-200 sm:min-h-0 sm:text-xs"
+              >
+                {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               onClick={() => setPage(Math.max(1, q.data.meta.page - 1))}

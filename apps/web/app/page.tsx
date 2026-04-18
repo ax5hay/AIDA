@@ -234,6 +234,19 @@ export default function LandingPage() {
           </div>
         </motion.section>
 
+        <div className="mx-auto mt-16 flex min-h-[min(24vh,280px)] w-full max-w-5xl flex-col justify-end overflow-hidden px-4 sm:px-0">
+          <p
+            className="pointer-events-none w-full select-none text-center font-semibold uppercase text-white/[0.035] antialiased"
+            style={{
+              fontSize: "clamp(2rem, 11vw, 6.5rem)",
+              letterSpacing: "0.42em",
+            }}
+            aria-hidden
+          >
+            AIXIMIUS
+          </p>
+        </div>
+
         <motion.footer
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

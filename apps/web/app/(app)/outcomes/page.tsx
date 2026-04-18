@@ -12,8 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
-
-const MAT_PAGE_SIZE = 15;
+import { TABLE_PAGE_SIZE_OPTIONS, parseTablePageSize, type TablePageSize } from "@/lib/table-pagination";
 
 export default function OutcomesPage() {
   const searchParams = useSearchParams();
@@ -21,6 +20,7 @@ export default function OutcomesPage() {
   const pathname = usePathname();
   const qs = searchParams.toString();
   const matPage = Math.max(1, Number(searchParams.get("matPage") ?? "1") || 1);
+  const matPageSize = parseTablePageSize(searchParams.get("matPageSize"), 10);
   const { filters, setFilters, clearFilters, filtersKey } = useAnalyticsFilters();
 
   const q = useQuery({
@@ -30,9 +30,9 @@ export default function OutcomesPage() {
   });
 
   const mat = useQuery({
-    queryKey: ["anomalies", "maternal_deaths", filtersKey, matPage],
+    queryKey: ["anomalies", "maternal_deaths", filtersKey, matPage, matPageSize],
     queryFn: ({ signal }) =>
-      getAnomalies("maternal_deaths", filters, { signal, page: matPage, pageSize: MAT_PAGE_SIZE }),
+      getAnomalies("maternal_deaths", filters, { signal, page: matPage, pageSize: matPageSize }),
     ...analyticsFilteredQuery,
   });
 
@@ -40,6 +40,15 @@ export default function OutcomesPage() {
     const p = new URLSearchParams(searchParams.toString());
     if (next <= 1) p.delete("matPage");
     else p.set("matPage", String(next));
+    p.set("matPageSize", String(matPageSize));
+    const s = p.toString();
+    router.replace(s ? `${pathname}?${s}` : pathname);
+  };
+
+  const setMatPageSize = (next: TablePageSize) => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("matPageSize", String(next));
+    p.delete("matPage");
     const s = p.toString();
     router.replace(s ? `${pathname}?${s}` : pathname);
   };
@@ -109,6 +118,20 @@ export default function OutcomesPage() {
                   <span>
                     Page {mat.data.meta.page} of {mat.data.meta.totalPages} · {mat.data.meta.total} outliers
                   </span>
+                  <label className="flex items-center gap-2 text-xs text-zinc-500">
+                    <span className="shrink-0">Rows per page</span>
+                    <select
+                      value={matPageSize}
+                      onChange={(e) => setMatPageSize(Number(e.target.value) as TablePageSize)}
+                      className="min-h-[40px] rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-sm text-zinc-200 sm:min-h-0 sm:text-xs"
+                    >
+                      {TABLE_PAGE_SIZE_OPTIONS.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <button
                     type="button"
                     disabled={mat.data.meta.page <= 1}

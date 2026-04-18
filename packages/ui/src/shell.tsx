@@ -30,7 +30,7 @@ export function PageShell({
   return (
     <div className="min-h-screen bg-[#07080c] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(56,189,248,0.08),transparent_55%),radial-gradient(ellipse_at_bottom,_rgba(99,102,241,0.06),transparent_50%)]" />
-      <div className="relative mx-auto min-w-0 max-w-[1400px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-8 sm:px-6 sm:pt-12 md:pb-24">
+      <div className="relative mx-auto flex min-h-screen min-w-0 max-w-[1400px] flex-col px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-8 sm:px-6 sm:pt-12 md:pb-24">
         <motion.header
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -67,7 +67,20 @@ export function PageShell({
           </p>
         </motion.section>
         {children}
-        <div className="pointer-events-none mt-12 flex justify-center pb-1 md:mt-16">
+        <div className="mt-auto flex min-h-[min(28vh,320px)] w-full shrink-0 flex-col justify-end overflow-hidden pt-10 md:pt-14">
+          <p
+            className="pointer-events-none w-full select-none text-center font-semibold uppercase text-white/[0.035] antialiased"
+            style={{
+              fontSize: "clamp(2rem, 11vw, 6.5rem)",
+              letterSpacing: "0.42em",
+              paddingInline: "max(0px, env(safe-area-inset-left))",
+            }}
+            aria-hidden
+          >
+            AIXIMIUS
+          </p>
+        </div>
+        <div className="pointer-events-none mt-8 flex justify-center pb-1 md:mt-10">
           <AiximiusMark />
         </div>
       </div>
