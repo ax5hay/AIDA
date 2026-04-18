@@ -11,14 +11,15 @@ import { useAppNavRailOffsetClass } from "@/components/app-nav-context";
 
 type Tab = "actions" | "score" | "alerts" | "whatif" | "quality" | "compare" | "story";
 
-const TABS: Array<[Tab, string, string]> = [
-  ["actions", "Actions", "Act"],
-  ["score", "Score", "Score"],
-  ["alerts", "Alerts", "Alert"],
-  ["whatif", "What-if", "If"],
-  ["quality", "Quality", "Data"],
-  ["compare", "Benchmarks", "Bench"],
-  ["story", "Story", "Story"],
+/** One label per tab; mobile uses the same copy (horizontal scroll on narrow screens). */
+const TABS: Array<[Tab, string]> = [
+  ["actions", "Actions"],
+  ["score", "Score"],
+  ["alerts", "Alerts"],
+  ["whatif", "What-if"],
+  ["quality", "Quality"],
+  ["compare", "Benchmarks"],
+  ["story", "Story"],
 ];
 
 export function DecisionSupportDock() {
@@ -87,7 +88,7 @@ export function DecisionSupportDock() {
                 role="tablist"
                 aria-label="Decision support sections"
               >
-                {TABS.map(([id, label, short]) => (
+                {TABS.map(([id, label]) => (
                   <button
                     key={id}
                     type="button"
@@ -95,12 +96,11 @@ export function DecisionSupportDock() {
                     aria-selected={tab === id}
                     onClick={() => setTab(id)}
                     className={cn(
-                      "min-h-[44px] shrink-0 snap-start rounded-xl px-3 py-2.5 text-sm font-medium touch-manipulation sm:min-h-0 sm:rounded-lg sm:py-1.5 sm:text-xs",
+                      "min-h-[44px] shrink-0 snap-start whitespace-nowrap rounded-xl px-3 py-2.5 text-xs font-medium touch-manipulation sm:min-h-0 sm:rounded-lg sm:py-1.5 sm:text-xs",
                       tab === id ? "bg-cyan-500/20 text-cyan-100" : "text-zinc-500 active:bg-white/10 sm:hover:bg-white/5",
                     )}
                   >
-                    <span className="sm:hidden">{short}</span>
-                    <span className="hidden sm:inline">{label}</span>
+                    {label}
                   </button>
                 ))}
               </div>
