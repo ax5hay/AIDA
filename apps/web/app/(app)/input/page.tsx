@@ -73,7 +73,7 @@ export default function InputDataPage() {
     <PageShell
       title="Data input"
       eyebrow="Facility assessments"
-      subtitle="Create assessment rows directly from the app. Field structure is generated from API ingestion schema aligned with DB-backed section contracts."
+      subtitle="Create assessment rows directly from the app. The form follows the same clinical sections and fields as the rest of AIDA."
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 

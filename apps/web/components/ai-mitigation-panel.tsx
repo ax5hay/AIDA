@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * Shows what the API sent to the LLM after structured shortening (vs raw snapshot size).
+ * Summarizes how a dashboard snapshot was shortened before optional narrative generation.
  */
 export function AiMitigationPanel({ mitigation, title = "Prompt shaping", accent = "cyan", className }: Props) {
   if (!mitigation) return null;
@@ -23,31 +23,31 @@ export function AiMitigationPanel({ mitigation, title = "Prompt shaping", accent
       <p className={cn("font-semibold uppercase tracking-wide", label)}>{title}</p>
       <dl className="mt-3 grid gap-2 sm:grid-cols-2">
         <div>
-          <dt className="text-zinc-500">Raw snapshot (chars)</dt>
+          <dt className="text-zinc-500">Full snapshot (characters)</dt>
           <dd className="font-mono text-zinc-200">{mitigation.originalChars.toLocaleString()}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Sent to model (chars)</dt>
+          <dt className="text-zinc-500">Sent for narrative (characters)</dt>
           <dd className="font-mono text-zinc-200">{mitigation.sentChars.toLocaleString()}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Est. user JSON tokens</dt>
+          <dt className="text-zinc-500">Est. structured content (tokens)</dt>
           <dd className="font-mono text-zinc-200">~{mitigation.estimatedUserTokens}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Est. full prompt tokens</dt>
+          <dt className="text-zinc-500">Est. full prompt (tokens)</dt>
           <dd className="font-mono text-zinc-200">~{mitigation.estimatedFullPromptTokens}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Budget (chars / ~tok)</dt>
+          <dt className="text-zinc-500">Budget (chars / ~tokens)</dt>
           <dd className="font-mono text-zinc-200">
             {mitigation.budgetChars.toLocaleString()} / ~{mitigation.budgetTokensApprox}
           </dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Assumed LLM context</dt>
+          <dt className="text-zinc-500">Assumed context window</dt>
           <dd className="font-mono text-zinc-200">
-            n_ctx≈{mitigation.llmContextTokens} (reserve ~{mitigation.reserveTokens} for system + completion)
+            ~{mitigation.llmContextTokens} (reserve ~{mitigation.reserveTokens} for instructions + reply)
           </dd>
         </div>
       </dl>
@@ -63,17 +63,12 @@ export function AiMitigationPanel({ mitigation, title = "Prompt shaping", accent
       ) : null}
       {mitigation.omittedKeys.length > 0 ? (
         <details className="mt-2">
-          <summary className="cursor-pointer text-zinc-500 hover:text-zinc-400">Omitted or truncated paths</summary>
+          <summary className="cursor-pointer text-zinc-500 hover:text-zinc-400">Omitted or shortened parts</summary>
           <p className="mt-2 break-all font-mono text-[11px] leading-relaxed text-zinc-500">
             {mitigation.omittedKeys.join(" · ")}
           </p>
         </details>
       ) : null}
-      <p className="mt-3 text-[11px] text-zinc-600">
-        Tune <span className="font-mono text-zinc-500">AI_LLM_CONTEXT_TOKENS</span>,{" "}
-        <span className="font-mono text-zinc-500">AI_USER_CONTENT_MAX_CHARS</span>, and related vars on the API host if
-        your model has a larger context window.
-      </p>
     </div>
   );
 }

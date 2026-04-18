@@ -46,7 +46,7 @@ const CHART_AXIS = { tick: { fill: "#a1a1aa", fontSize: 11 } };
 
 const SAVES_KEY = "aida-comparison-lab-saves-v1";
 
-/** Cap scatter points in AI POST body — full run can be thousands of rows. */
+/** Cap scatter points sent with optional AI explanation — full runs can be thousands of rows. */
 const AI_SCATTER_SAMPLE_MAX = 160;
 
 function buildComparisonLabAiSnapshot(
@@ -65,7 +65,7 @@ function buildComparisonLabAiSnapshot(
   if (scatter && scatter.length > AI_SCATTER_SAMPLE_MAX) {
     const half = Math.floor(AI_SCATTER_SAMPLE_MAX / 2);
     scatterSample = [...scatter.slice(0, half), ...scatter.slice(-half)];
-    note = `Scatter sampled for LLM: ${scatter.length} points total; first ${half} and last ${half} included.`;
+    note = `Large scatter summarized for the narrative: ${scatter.length} points; first ${half} and last ${half} included.`;
   }
   return {
     page: "comparison-lab" as const,
@@ -816,7 +816,7 @@ export function ComparisonLabPage() {
       subtitle="Choose metrics A and B (optional C for a three-variable bubble). The engine only allows linked entities, matching aggregation levels, and statistically meaningful pairings — then picks the right visualization."
       explainer={{
         what: "A guided comparator for any two (or three) compatible numeric metrics in the database.",
-        does: "Produces a chart, statistical summary, stakeholder-ready narrative, and exports — without expecting readers to interpret raw JSON.",
+        does: "Produces a chart, statistical summary, stakeholder-ready narrative, and exports — without expecting readers to interpret machine-oriented details.",
       }}
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
@@ -831,7 +831,7 @@ export function ComparisonLabPage() {
             <h2 className="text-sm font-medium text-white">Metric selection</h2>
             <p className="mt-1 text-xs text-zinc-500">
               After you pick Metric A, incompatible metrics stay locked. Hover disabled options (where supported) for the
-              reason, or see the compatibility matrix from the API.
+              reason, or open the compatibility matrix below.
             </p>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <MetricSelect
@@ -986,12 +986,6 @@ export function ComparisonLabPage() {
                 </p>
                 <RunCharts data={run.data} />
               </div>
-              <details className="text-xs text-zinc-500">
-                <summary className="cursor-pointer text-zinc-400">Raw stats</summary>
-                <pre className="mt-2 overflow-auto rounded-lg bg-black/40 p-3 font-mono text-[11px]">
-                  {JSON.stringify(run.data.stats, null, 2)}
-                </pre>
-              </details>
             </div>
           ) : null}
         </div>

@@ -52,7 +52,7 @@ export default function OverviewPage() {
 
   if (q.isError || !q.data) {
     return (
-      <PageShell title="Program overview" eyebrow="Decision intelligence" subtitle="API error">
+      <PageShell title="Program overview" eyebrow="Decision intelligence" subtitle="Could not load overview">
         <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
         <p className="text-sm text-rose-400">{(q.error as Error)?.message ?? "Unknown error"}</p>
       </PageShell>
@@ -74,7 +74,7 @@ export default function OverviewPage() {
       eyebrow="Decision intelligence"
       subtitle="One place to see how much data you have, where it sits in time and geography, and how key programme rates look — every percentage below names its denominator."
       explainer={{
-        what: "The executive dashboard for the filtered facility assessment corpus.",
+        what: "The executive dashboard for facility assessments matching your filters.",
         does: "Aggregates all matching monthly facility rows: coverage, ANC screening numerators over Σ total_anc_registered, and outcome events over live births where applicable.",
       }}
     >
@@ -160,7 +160,7 @@ export default function OverviewPage() {
           {
             label: "Institutional delivery ratio",
             value: inst != null ? `${(inst * 100).toFixed(1)}%` : "n/a",
-            hint: "(facility + other institutional) ÷ all delivery sites — see analytics engine definition.",
+            hint: "(facility + other institutional) ÷ all delivery sites — same rule as the institutional delivery KPI in Analytics.",
           },
           {
             label: "LBW / live births",

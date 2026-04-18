@@ -190,7 +190,7 @@ export function AnalyticsSuite({
           <span className="font-medium text-zinc-300">What it is:</span> Deterministic pipelines (gaps, cohorts,
           correlations, anomalies) built from all section fields in the filter.{" "}
           <span className="font-medium text-zinc-300">What it does:</span> Surfaces programme-wide patterns and
-          district-level heat without an LLM.
+          district-level heat from your data alone.
         </p>
         <PublicHealthIntelligenceLoader filters={filters} filtersKey={filtersKey} />
       </section>
@@ -209,7 +209,7 @@ export function AnalyticsSuite({
           <code className="rounded bg-white/5 px-1 font-mono text-[13px] text-zinc-300">total_anc_registered</code>,
           mortality and delivery mix from{" "}
           <code className="rounded bg-white/5 px-1 font-mono text-[13px] text-zinc-300">delivery_and_outcomes</code>, and
-          management gaps from identified vs managed cohort tables. No LLM; no synthetic rows.
+          management gaps from identified vs managed cohort tables. No synthetic rows.
         </p>
         {overview.isLoading ? (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -452,7 +452,7 @@ export function AnalyticsSuite({
       </p>
       <ChartCard
         title="Engineered-series correlation matrix"
-        subtitle="Same Pearson matrix as Correlations: anemia_pre, bmi_pre, anemia_preg, bmi_preg, live_births — comparable cohort constructs from the analytics engine."
+        subtitle="Same Pearson matrix as Correlations: anemia_pre, bmi_pre, anemia_preg, bmi_preg, live_births — comparable cohort constructs computed the same way across the product."
       >
         {corr.isLoading ? (
           <Skeleton />

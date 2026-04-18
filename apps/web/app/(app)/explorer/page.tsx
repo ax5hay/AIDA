@@ -11,6 +11,16 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { withQueryString } from "@/lib/query-params";
 import { analyticsFilteredQuery } from "@/lib/analytics-query";
 import { TABLE_PAGE_SIZE_OPTIONS, parseTablePageSize, type TablePageSize } from "@/lib/table-pagination";
+import type { OverviewMeta } from "@/lib/types";
+
+function activeFilterSummary(f: OverviewMeta["filters"]): string | null {
+  const parts: string[] = [];
+  if (f.from) parts.push(`from ${f.from}`);
+  if (f.to) parts.push(`to ${f.to}`);
+  if (f.district) parts.push(`district: ${f.district}`);
+  if (f.facilityId) parts.push(`facility id: ${f.facilityId}`);
+  return parts.length ? parts.join(" · ") : null;
+}
 
 export default function ExplorerPage() {
   const router = useRouter();
@@ -41,11 +51,13 @@ export default function ExplorerPage() {
     router.replace(`${pathname}?${p.toString()}`);
   };
 
+  const explorerFilterSummary = q.data ? activeFilterSummary(q.data.meta.filters) : null;
+
   return (
     <PageShell
       title="Data explorer"
       eyebrow="Assessments"
-      subtitle="Filter by period, district, and facility — query params stay in the URL for shareable views."
+      subtitle="Filter by period, district, and facility — your choices stay with the link when you share a view."
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 
@@ -59,9 +71,7 @@ export default function ExplorerPage() {
             Showing page <span className="font-mono text-white">{q.data.meta.page}</span> of{" "}
             <span className="font-mono text-white">{q.data.meta.totalPages}</span> · total{" "}
             <span className="font-mono text-white">{q.data.meta.totalCount}</span> assessments
-            {JSON.stringify(q.data.meta.filters) !== "{}" ? (
-              <span className="text-zinc-500"> · filters {JSON.stringify(q.data.meta.filters)}</span>
-            ) : null}
+            {explorerFilterSummary ? <span className="text-zinc-500"> · {explorerFilterSummary}</span> : null}
           </p>
           <div className="overflow-x-auto rounded-xl border border-white/10">
             <table className="w-full min-w-[960px] border-collapse text-left text-sm">

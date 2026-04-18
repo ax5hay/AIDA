@@ -110,12 +110,12 @@ export default function AiPage() {
       setIntelError(null);
       if (!d.enabled) {
         setIntelText(
-          "Server AI is disabled. Full deterministic intelligence (pipelines, gaps, what/why/next) is available from the Analytics suite without an LLM.",
+          "Narrative generation is off for this deployment. Full deterministic intelligence (pipelines, gaps, what/why/next) is still available in the Analytics suite.",
         );
         return;
       }
       setIntelText(
-        "LLM returned no text. Expand the Analytics suite public health section for the full JSON, or retry with a different model.",
+        "No narrative text was returned. Open the Analytics suite public health section for the full deterministic breakdown, or try another model.",
       );
     },
     onError: (e: Error) => {
@@ -134,13 +134,13 @@ export default function AiPage() {
     <PageShell
       title="AI insights"
       eyebrow="Optional GenAI layer"
-      subtitle="Narrative synthesis uses the same filtered snapshots as the dashboard: program overview and/or the full public health intelligence bundle. Counts always come from the API response, not the model."
+      subtitle="Narrative synthesis uses the same filtered views as the dashboard: program overview and/or the full public health intelligence bundle. Counts always come from the programme data behind the dashboard, not from the model."
     >
       <AnalyticsFilterBar filters={filters} onChange={setFilters} onClear={clearFilters} />
 
       <InsightCallout
         title="Privacy & governance"
-        body="Route LM Studio locally for PHI-sensitive deployments. You can disable generation in this UI without changing server env — the API still enforces AI_INSIGHTS_ENABLED."
+        body="For sensitive data, run optional narrative tools in a controlled environment. You can turn off generation in this browser; your organisation’s administrators control whether the feature is available at all."
       />
 
       <div className="mt-8 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:grid-cols-2 sm:p-5">
@@ -170,9 +170,7 @@ export default function AiPage() {
 
         <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/30 px-4 py-3">
           <p className="text-sm font-medium text-white">LM Studio model</p>
-          <p className="text-xs text-zinc-500">
-            Loaded from <span className="font-mono text-zinc-400">GET /v1/models</span> via the API proxy.
-          </p>
+          <p className="text-xs text-zinc-500">Model list is loaded from your organisation’s configured insight provider.</p>
           <select
             className="min-h-[44px] rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 disabled:opacity-40"
             disabled={!clientAiEnabled || !config.data?.lmStudioConfigured || models.isLoading}
@@ -186,7 +184,7 @@ export default function AiPage() {
             ))}
           </select>
           {!config.data?.lmStudioConfigured ? (
-            <p className="text-xs text-amber-200/80">Set LM_STUDIO_BASE_URL on the API host to list models.</p>
+            <p className="text-xs text-amber-200/80">Ask your administrator to connect a model server if you need a model list here.</p>
           ) : null}
         </div>
       </div>
@@ -254,7 +252,7 @@ export default function AiPage() {
       ) : (
         <p className="mt-8 text-sm text-zinc-500">
           {!serverOn
-            ? "Set AI_INSIGHTS_ENABLED=true and configure LM_STUDIO_BASE_URL or OPENAI_API_KEY on the API host."
+            ? "Narrative generation is not enabled for this deployment. Ask your administrator if it should be turned on."
             : !clientAiEnabled
               ? "AI generation is turned off in this browser."
               : "Run overview generation to produce an executive-style narrative for the current filters."}
@@ -271,8 +269,8 @@ export default function AiPage() {
         <div className="mt-8 space-y-3">
           <p className="text-sm text-rose-400">{intelError}</p>
           <p className="text-xs text-zinc-500">
-            Deterministic blocks are still in Analytics → Public health intelligence. The panel below shows what was
-            sent to the model after server-side shortening.
+            Deterministic blocks are still in Analytics → Public health intelligence. The panel below summarizes how the
+            snapshot was shortened before sending.
           </p>
         </div>
       ) : intelText ? (

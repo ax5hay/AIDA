@@ -35,7 +35,7 @@ export default function CorrelationsPage() {
     <PageShell
       title="Correlation engine"
       eyebrow="Drivers · programme timing · outcomes"
-      subtitle="Pearson r on assessment-level engineered series (same definitions as the analytics engine). Before/after uses a median reporting-date split when timestamps vary; if every row shares the same period, the API falls back to splitting by row order."
+      subtitle="Pearson r on assessment-level engineered series (same definitions as elsewhere in Analytics). Before/after uses a median reporting-date split when timestamps vary; if every row shares the same period, the product falls back to splitting by row order."
       explainer={{
         what: "Statistical relationships between anemia proxies, BMI bands, and live births in your filter.",
         does: "Shows full-matrix correlations plus an automatic first-half vs second-half comparison by reporting period to frame programme success narratives.",

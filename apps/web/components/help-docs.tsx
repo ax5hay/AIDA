@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { cn } from "@aida/ui";
 import {
-  HELP_API_ROUTES,
   HELP_ASSESSMENT,
+  HELP_CLINICAL_SECTIONS,
   HELP_DELIVERY_OUTCOMES,
   HELP_DOCUMENTS,
   HELP_DERIVED_METRICS,
@@ -20,7 +20,6 @@ import {
   HELP_PREGNANT_MANAGED,
   HELP_PREGNANT_REGISTERED_SCREENED,
   HELP_REMARKS,
-  HELP_SECTION_ENDPOINT_KEYS,
   HELP_VALIDATION,
   type HelpField,
 } from "@/lib/help-fields";
@@ -28,17 +27,16 @@ import {
 const toc = [
   { id: "intro", label: "Introduction" },
   { id: "reading-metrics", label: "Percentages & denominators" },
-  { id: "filters", label: "Filters & URLs" },
+  { id: "filters", label: "Filters & sharing" },
   { id: "model", label: "Core tables" },
   { id: "sections", label: "Clinical sections (all columns)" },
   { id: "remarks-docs", label: "Remarks & documents" },
   { id: "derived", label: "Derived metrics & formulas" },
-  { id: "section-api", label: "Section analytics API" },
+  { id: "section-pages", label: "What each clinical page shows" },
   { id: "validation", label: "Data validation" },
-  { id: "overview-behavior", label: "Overview, cache & alerts" },
+  { id: "overview-behavior", label: "Program overview & alerts" },
   { id: "advanced", label: "Correlations, districts, scatters, anomalies" },
-  { id: "routes", label: "API routes" },
-  { id: "pages", label: "UI pages → data" },
+  { id: "pages", label: "Screens & data" },
 ] as const;
 
 function FieldTable({ title, rows, model }: { title: string; rows: HelpField[]; model: string }) {
@@ -117,12 +115,13 @@ export function HelpDocs({ className }: { className?: string }) {
         <ul className="list-inside list-disc space-y-3">
           <li>
             <strong className="text-zinc-300">Program overview &amp; Analytics KPI cards</strong> — ANC screening (HIV, Hb×4,
-            BP, etc.) is &quot;test count ÷ Σ total_anc_registered&quot; summed across the filtered assessments. The UI shows
-            the numerator and denominator when available.
+            BP, etc.) divides each test count by the sum of{" "}
+            <code className="font-mono text-[12px]">total_anc_registered</code> across filtered assessments. The UI shows the
+            numerator and denominator when available.
           </li>
           <li>
             <strong className="text-zinc-300">Mortality &amp; adverse birth outcomes</strong> — maternal deaths, early neonatal
-            deaths, LBW, and preterm use **live births** as denominator where the engine defines a rate.
+            deaths, LBW, and preterm use **live births** as denominator where the product defines a rate.
           </li>
           <li>
             <strong className="text-zinc-300">Section page — “distribution” bars</strong> — percentages are the field’s share
@@ -141,27 +140,25 @@ export function HelpDocs({ className }: { className?: string }) {
       </section>
 
       <section id="filters" className="scroll-mt-28">
-        <h2 className="mt-14 text-lg font-semibold text-white">Filters & URL query params</h2>
+        <h2 className="mt-14 text-lg font-semibold text-white">Filters &amp; shareable views</h2>
         <p className="mt-3 text-sm text-zinc-400">
-          Mirrors <code className="rounded bg-white/5 px-1 font-mono text-[13px]">ExplorerFilters</code> on the API.
-          The filter bar updates <code className="font-mono text-[13px]">from</code>, <code className="font-mono text-[13px]">to</code>,{" "}
-          <code className="font-mono text-[13px]">district</code>, <code className="font-mono text-[13px]">facilityId</code> — the
-          same query string is appended when navigating between Overview, Analytics, section pages, Explorer, and AI (for the
-          overview payload).
+          The filter bar (date range, district, facility) is the same everywhere. When you move between Overview, Analytics,
+          clinical section pages, Explorer, and AI insights, your choices stay attached so colleagues opening the link see the
+          same slice of data.
         </p>
-        <FieldTable title="Query parameters" rows={HELP_FILTERS} model="URL" />
+        <FieldTable title="Filter fields" rows={HELP_FILTERS} model="filters" />
       </section>
 
       <section id="model" className="scroll-mt-28">
-        <h2 className="mt-14 text-lg font-semibold text-white">Facility & assessment shell</h2>
+        <h2 className="mt-14 text-lg font-semibold text-white">Facility &amp; assessment shell</h2>
         <FieldTable title="Facility" rows={HELP_FACILITY} model="Facility" />
         <FieldTable title="Facility assessment" rows={HELP_ASSESSMENT} model="assessment row" />
       </section>
 
       <section id="sections" className="scroll-mt-28">
-        <h2 className="mt-14 text-lg font-semibold text-white">Clinical sections — every DB column</h2>
+        <h2 className="mt-14 text-lg font-semibold text-white">Clinical sections — every stored field</h2>
         <p className="mt-3 text-sm text-zinc-400">
-          Numeric fields are stored as integers ≥ 0. They are summed across all assessments matching filters unless you are
+          Numeric fields are stored as integers ≥ 0. They are summed across all assessments matching your filters unless you are
           viewing a single row in Explorer detail.
         </p>
         <FieldTable title="Preconception — women identified" rows={HELP_PRECONCEPTION_IDENTIFIED} model="PreconceptionWomenIdentified" />
@@ -187,9 +184,9 @@ export function HelpDocs({ className }: { className?: string }) {
       </section>
 
       <section id="derived" className="scroll-mt-28">
-        <h2 className="mt-14 text-lg font-semibold text-white">Derived metrics (analytics engine)</h2>
+        <h2 className="mt-14 text-lg font-semibold text-white">Derived metrics (computed in the product)</h2>
         <p className="mt-3 text-sm text-zinc-400">
-          These are not stored columns; they are computed in code from summed or row-wise data.
+          These are not stored columns; they are computed from summed or row-wise data using the formulas below.
         </p>
         <div className="mt-4 space-y-4">
           {HELP_DERIVED_METRICS.map((d) => (
@@ -202,35 +199,42 @@ export function HelpDocs({ className }: { className?: string }) {
         </div>
       </section>
 
-      <section id="section-api" className="scroll-mt-28 space-y-4 text-sm text-zinc-400">
-        <h2 className="text-lg font-semibold text-white">Section analytics (`/analytics/section/:section`)</h2>
+      <section id="section-pages" className="scroll-mt-28 space-y-4 text-sm text-zinc-400">
+        <h2 className="text-lg font-semibold text-white">What each clinical page shows</h2>
         <p>
-          Valid <code className="rounded bg-white/5 px-1 font-mono text-[13px]">section</code> keys:{" "}
-          <span className="font-mono text-xs text-zinc-500">
-            {HELP_SECTION_ENDPOINT_KEYS.join(", ")}
-          </span>
+          Each chapter below has its own screen (Preconception, Pregnancy, Outcomes, etc.). On that screen you typically see:
+          section totals, a grid of field metrics with explicit denominators where applicable, a workload “distribution” view, and
+          a monthly trend.
         </p>
+        <ul className="list-inside list-disc space-y-2">
+          {HELP_CLINICAL_SECTIONS.map((s) => (
+            <li key={s.key}>
+              <strong className="text-zinc-300">{s.title}</strong>
+            </li>
+          ))}
+        </ul>
         <ul className="list-inside list-disc space-y-2 text-zinc-400">
           <li>
-            <strong className="text-zinc-300">totals</strong> — sum of each field across filtered assessments (missing sections
-            skipped).
+            <strong className="text-zinc-300">Totals</strong> — sum of each field across filtered assessments (missing clinical
+            blocks for a row are skipped).
           </li>
           <li>
-            <strong className="text-zinc-300">fieldMetrics</strong> — absolute totals plus percentage vs an explicit
+            <strong className="text-zinc-300">Field metrics</strong> — absolute totals plus percentage against a clear
             denominator: for ANC registration, each screening field uses{" "}
-            <code className="font-mono text-[12px]">Σ total_anc_registered</code>; for identification / intervention / high-risk /
-            infants / postnatal, the denominator is <strong className="text-zinc-300">Σ all fields in that section</strong> (share
-            of workload mix). For <code className="font-mono text-[12px]">delivery_and_outcomes</code>, per-field rules apply
-            (e.g. deaths and LBW vs live births; delivery site fields vs Σ facility + other institutional + home). Each card can
-            include a short <code className="font-mono text-[12px]">denominatorNote</code>.
+            <code className="font-mono text-[12px]">Σ total_anc_registered</code>; for identification, intervention, high-risk,
+            infants, and postnatal sections, the denominator is usually{" "}
+            <strong className="text-zinc-300">the sum of all fields in that section</strong> (share of workload mix). For{" "}
+            <code className="font-mono text-[12px]">delivery_and_outcomes</code>, per-field rules apply (e.g. deaths and LBW vs
+            live births; delivery site fields vs facility + other institutional + home). Each card can include a short denominator
+            note.
           </li>
           <li>
-            <strong className="text-zinc-300">comparativeDistribution</strong> — each field’s share of the{" "}
+            <strong className="text-zinc-300">Distribution bars</strong> — each field’s share of the{" "}
             <em>section internal</em> sum (all fields in that section), useful for burden plots.
           </li>
           <li>
-            <strong className="text-zinc-300">timeSeries</strong> — monthly buckets (UTC year-month) of absolute counts; for the
-            ANC section only, monthly % uses that month’s bucket totals for numerator and{" "}
+            <strong className="text-zinc-300">Monthly trend</strong> — counts by reporting month; for the ANC section only,
+            monthly % uses that month’s bucket for numerator and{" "}
             <code className="font-mono text-[12px]">total_anc_registered</code> in that bucket as denominator.
           </li>
         </ul>
@@ -250,25 +254,19 @@ export function HelpDocs({ className }: { className?: string }) {
       </section>
 
       <section id="overview-behavior" className="scroll-mt-28 space-y-4 text-sm text-zinc-400">
-        <h2 className="text-lg font-semibold text-white">Program overview payload</h2>
+        <h2 className="text-lg font-semibold text-white">Program overview</h2>
         <p>
-          The overview endpoint aggregates the same filtered assessments and returns{" "}
-          <code className="font-mono text-[12px]">meta</code> (assessment count, facility and district counts, min/max reporting
-          period), <code className="font-mono text-[12px]">corpus</code> (section presence counts, ANC numerators, outcome
-          denominators for transparent KPI math), <code className="font-mono text-[12px]">kpis</code> (screening rates, gaps,
-          mortality, delivery, LBW, preterm), a{" "}
-          <code className="font-mono text-[12px]">funnel</code> (preconception identified/managed, interventions object, pregnancy
-          registered/identified/managed, outcome death counts), <code className="font-mono text-[12px]">alerts</code> when
-          rule thresholds fire, and <code className="font-mono text-[12px]">validation.issues</code>.
+          The overview screen aggregates the same filtered assessments and shows how many rows and facilities you are looking at,
+          which clinical blocks are present, headline screening and outcome rates with transparent numerators and denominators, a
+          programme funnel, rule-based alerts when thresholds fire, and a list of validation issues.
         </p>
         <p>
           <strong className="text-zinc-300">Alerts (rule-based)</strong>: maternal mortality rate &gt; 0.002 (deaths per live
           birth); HIV screening rate &lt; 0.85; Hb×4 screening rate &lt; 0.75.
         </p>
         <p>
-          <strong className="text-zinc-300">Caching</strong>: overview responses are cached server-side for a short TTL (~30
-          seconds) to reduce load; the extended <code className="font-mono text-[12px]">/analytics/intelligence</code>{" "}
-          response uses a separate key and a slightly longer TTL (~60s). Filters bust cache keys.
+          <strong className="text-zinc-300">Freshness</strong>: numbers may update shortly after you change filters; very large
+          workspaces can take a moment to refresh.
         </p>
       </section>
 
@@ -289,48 +287,33 @@ export function HelpDocs({ className }: { className?: string }) {
             Hb×4, ANC vs HIV, pregnancy anemia vs live births, preconception anemia identified vs managed.
           </li>
           <li>
-            <strong className="text-zinc-300">Anomalies</strong> — z-scores on per-assessment{" "}
+            <strong className="text-zinc-300">Anomalies</strong> — statistical flags on per-assessment{" "}
             <code className="font-mono text-[12px]">live_births</code> or{" "}
-            <code className="font-mono text-[12px]">maternal_deaths</code>; flags when{" "}
-            <code className="font-mono text-[12px]">|z| &gt; 2.5</code>. API responses include pagination metadata (page,
-            pageSize, total).
+            <code className="font-mono text-[12px]">maternal_deaths</code> compared to the rest of the filtered cohort (extreme
+            values surface for review). Lists are paginated in the explorer-style tables.
           </li>
           <li>
             <strong className="text-zinc-300">Intervention comparison (correlations)</strong> — same Pearson constructs, split at
             the midpoint of the filtered timeline for early vs later reporting periods (exploratory).
           </li>
           <li>
-            <strong className="text-zinc-300">Public health intelligence</strong> —{" "}
-            <code className="font-mono text-[12px]">GET /analytics/intelligence</code> adds pipeline funnels (four
-            standardized chains), gap analytics and district severity, extended correlations (Pearson/Spearman, χ², risk
-            ratio), aligned monthly cohorts, time series with moving averages and spike indices, distribution shares,
-            multivariate scatters, combined anomaly methods (z-score, IQR, isolation-style), mother–infant cross-links, and
-            deterministic <em>what / why / next</em> insight blocks. Cached separately from overview (~60s).
+            <strong className="text-zinc-300">Public health intelligence (Analytics suite)</strong> — adds pipeline funnels (four
+            standardized chains), gap analytics and district severity, extended correlations (Pearson/Spearman, χ², risk ratio),
+            aligned monthly cohorts, time series with moving averages and spike indices, distribution shares, multivariate scatters,
+            combined anomaly views, mother–infant cross-links, and deterministic <em>what / why / next</em> insight blocks.
           </li>
         </ul>
       </section>
 
-      <section id="routes" className="scroll-mt-28">
-        <h2 className="mt-14 text-lg font-semibold text-white">Backend analytics routes (summary)</h2>
-        <ul className="mt-4 space-y-2 text-sm text-zinc-400">
-          {HELP_API_ROUTES.map((r) => (
-            <li key={r.route} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-              <span className="font-mono text-xs text-cyan-400/80">{r.route}</span>
-              <span className="mt-1 block text-xs text-zinc-500">{r.role}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
       <section id="pages" className="scroll-mt-28">
-        <h2 className="mt-14 text-lg font-semibold text-white">App pages and which data they use</h2>
+        <h2 className="mt-14 text-lg font-semibold text-white">Screens and what they emphasize</h2>
         <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full min-w-[560px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 bg-white/[0.02] text-[11px] uppercase tracking-wide text-zinc-500">
-                <th className="p-3 font-medium">Page</th>
+                <th className="p-3 font-medium">Screen</th>
                 <th className="p-3 font-medium">Path</th>
-                <th className="p-3 font-medium">Primary data</th>
+                <th className="p-3 font-medium">Primary focus</th>
               </tr>
             </thead>
             <tbody>
@@ -351,9 +334,8 @@ export function HelpDocs({ className }: { className?: string }) {
       </section>
 
       <p className="mt-12 border-t border-white/10 pt-8 text-xs text-zinc-600">
-        Documentation generated to mirror the Prisma schema and Nest <code className="font-mono">AnalyticsService</code>. If the
-        schema changes, update <code className="font-mono">packages/db/prisma/schema.prisma</code> and this help reference
-        together.
+        This reference is maintained alongside the assessment data model. If your organisation changes what is collected, update
+        data entry training and this dictionary together.
       </p>
     </div>
   );

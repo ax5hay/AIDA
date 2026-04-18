@@ -180,7 +180,7 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
       <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
         <h3 className="text-sm font-medium text-white">AI insight layer</h3>
         <p className="mt-1 text-xs text-zinc-500">
-          Optional LLM narrative (LM Studio when configured). Deterministic blocks above always apply; this never
+          Optional narrative layer when your organisation enables it. Deterministic blocks above always apply; this never
           replaces metrics.
         </p>
         <button
@@ -189,7 +189,7 @@ export function PublicHealthIntelligence({ data }: { data: PublicHealthIntellige
           onClick={() => data && aiMut.mutate()}
           className="mt-3 rounded-lg border border-violet-500/40 bg-violet-950/30 px-4 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-900/40 disabled:opacity-40"
         >
-          {aiMut.isPending ? "Generating…" : "Generate LLM hypotheses (optional)"}
+          {aiMut.isPending ? "Generating…" : "Generate optional hypotheses"}
         </button>
         {aiText ? (
           <pre className="mt-4 max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/40 p-4 font-sans text-xs leading-relaxed text-zinc-300">

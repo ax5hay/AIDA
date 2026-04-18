@@ -293,7 +293,7 @@ export function DecisionSupportDock() {
               </div>
 
               <p className="border-t border-white/10 px-3 py-2.5 text-center text-[10px] leading-snug text-zinc-600 sm:px-4 sm:py-2">
-                Filters match URL · refresh ~{d?.meta.refresh_hint_sec ?? 60}s
+                Results follow your current filters · may refresh about every {d?.meta.refresh_hint_sec ?? 60}s
               </p>
             </motion.div>
           ) : null}

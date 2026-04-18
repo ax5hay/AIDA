@@ -46,8 +46,8 @@ export default function AssessmentDetailPage() {
 
   if (!id) {
     return (
-      <PageShell title="Assessment" eyebrow="Detail" subtitle="Missing id">
-        <p className="text-sm text-rose-400">Invalid route</p>
+      <PageShell title="Assessment" eyebrow="Detail" subtitle="Missing reference">
+        <p className="text-sm text-rose-400">This link is incomplete.</p>
       </PageShell>
     );
   }

@@ -1,6 +1,5 @@
 /**
- * Reference documentation — aligned to packages/db/prisma/schema.prisma and API usage.
- * Field names MUST match the DB (schema forbids renames).
+ * Help reference — field names match the assessment data captured in AIDA.
  */
 
 export type HelpField = {
@@ -12,19 +11,19 @@ export type HelpField = {
 export const HELP_INTRO = {
   title: "How AIDA uses your data",
   paragraphs: [
-    "Each **facility assessment** row is one reporting window (typically monthly) for one **health facility**. Count columns are non‑negative integers: they sum women, events, or tests recorded in that window for that facility—unless the field is explicitly a rate computed in the analytics engine.",
+    "Each **facility assessment** row is one reporting window (typically monthly) for one **health facility**. Count columns are non‑negative integers: they sum women, events, or tests recorded in that window for that facility—unless the field is explicitly a computed rate.",
     "Whenever you see a **percentage in Overview or Analytics**, look for the **denominator line** under the headline value: ANC screening rates use **Σ total_anc_registered** across filtered rows; mortality and LBW/preterm use **live births**; distribution bars under a section use **that section’s internal total** (not ANC unless stated).",
-    "Optional **section relations** (e.g. `preconceptionWomenIdentified`) may be missing on a row. Analytics treats a missing section as **no contribution** for that section’s sums for that assessment (equivalent to zero counts).",
-    "The **analytics engine** (`@aida/analytics-engine`) aggregates rows that match URL filters (`from`, `to` on `periodStart`, optional `district`, `facilityId`). It sums fields across rows, derives ratios where formulas are fixed in code, and runs logical validation. The **API** (`AnalyticsService`) exposes overview KPIs, per‑section rollups, correlations, district rollups, scatters, explorer listings, assessment detail, the extended **`/analytics/intelligence`** bundle, and **`/analytics/decision-support`** (prioritized actions, health score, alerts, what‑if, quality, benchmarks, story mode).",
-    "**Field names are frozen** (see schema comment). This page documents what each column represents in public‑health terms and where it appears in the product.",
+    "Optional **clinical sections** may be missing on a row for a given assessment. AIDA treats a missing section as **no contribution** for that section’s sums for that assessment (equivalent to zero counts).",
+    "When you set **date range, district, or facility** in the filter bar, every dashboard and section view uses the **same** filtered set of assessments. The product sums fields, derives ratios from documented formulas, runs validation checks, and powers overview KPIs, clinical section pages, correlations, explorer, decision support, and optional narrative insights.",
+    "**Field names** in exports and this dictionary match the data model your teams enter. This page documents what each column means in public‑health terms and **where you see it in the product**.",
   ],
 };
 
 export const HELP_FILTERS: HelpField[] = [
   {
     name: "from / to",
-    meaning: "ISO date bounds applied to the assessment row’s periodStart (inclusive range via Prisma where).",
-    usedIn: "All analytics routes; URL query params preserved for shareable links.",
+    meaning: "ISO date bounds on the assessment reporting window start (inclusive).",
+    usedIn: "Overview, analytics, clinical sections, explorer, AI views; kept in the link when you share a filtered view.",
   },
   {
     name: "district",
@@ -39,19 +38,19 @@ export const HELP_FILTERS: HelpField[] = [
 ];
 
 export const HELP_FACILITY: HelpField[] = [
-  { name: "id", meaning: "Stable facility identifier (cuid).", usedIn: "Join key; Explorer & detail views." },
+  { name: "id", meaning: "Stable facility identifier.", usedIn: "Explorer list, assessment detail, filters." },
   { name: "name", meaning: "Facility / reporting unit display name.", usedIn: "Explorer, assessment detail, anomaly labels." },
   { name: "district", meaning: "Administrative district for rollups and filters.", usedIn: "District rollup, filter bar, tables." },
-  { name: "state", meaning: "State/region (optional string).", usedIn: "District rollup payload; facility context." },
-  { name: "createdAt", meaning: "Record creation time.", usedIn: "DB / ops only (not shown in analytics UI)." },
+  { name: "state", meaning: "State/region (optional string).", usedIn: "District views; facility context." },
+  { name: "createdAt", meaning: "Record creation time.", usedIn: "Back-office use; not shown on programme dashboards." },
 ];
 
 export const HELP_ASSESSMENT: HelpField[] = [
-  { name: "id", meaning: "Primary key for one assessment (cuid).", usedIn: "Explorer links, correlation series keys, anomaly pointers." },
-  { name: "facilityId", meaning: "FK to Facility.", usedIn: "All joins and explorer rows." },
+  { name: "id", meaning: "Primary key for one assessment row.", usedIn: "Explorer links, correlations, outlier drill-down." },
+  { name: "facilityId", meaning: "Links this row to its facility record.", usedIn: "All programme views and explorer rows." },
   { name: "periodStart", meaning: "Start of reporting window (stored as DateTime).", usedIn: "Filter window, monthly time buckets for section charts." },
   { name: "periodEnd", meaning: "End of reporting window.", usedIn: "Explorer table, assessment detail." },
-  { name: "createdAt / updatedAt", meaning: "Audit timestamps.", usedIn: "DB; not analytics KPIs." },
+  { name: "createdAt / updatedAt", meaning: "Audit timestamps.", usedIn: "Not used in headline KPIs." },
 ];
 
 export const HELP_PRECONCEPTION_IDENTIFIED: HelpField[] = [
@@ -81,7 +80,7 @@ export const HELP_PRECONCEPTION_INTERVENTIONS: HelpField[] = [
 
 /** Same columns as PreconceptionWomenIdentified — “managed” cohort. */
 export const HELP_PRECONCEPTION_MANAGED: HelpField[] = [
-  { name: "rti_sti", meaning: "Women with RTI/STI in preconception cohort receiving management.", usedIn: "Preconception page; management_gap.preconception_gap; validateManagedVsIdentified; scatter: anemia managed vs identified." },
+  { name: "rti_sti", meaning: "Women with RTI/STI in preconception cohort receiving management.", usedIn: "Preconception page; management-gap views; validation; anemia managed vs identified scatter." },
   { name: "tb", meaning: "Tuberculosis — managed.", usedIn: "Same." },
   { name: "epilepsy", meaning: "Epilepsy — managed.", usedIn: "Same." },
   { name: "syphilis", meaning: "Syphilis — managed.", usedIn: "Same." },
@@ -103,7 +102,7 @@ export const HELP_PREGNANT_REGISTERED_SCREENED: HelpField[] = [
   {
     name: "total_anc_registered",
     meaning: "Total pregnant women registered for ANC in the window — **central denominator** for screening coverage.",
-    usedIn: "Overview screening_rates; section metrics %; validateScreeningVsRegistered; district rollup ANC sums; clinical cross-section scatters; Explorer preview.",
+    usedIn: "Program overview screening rates; section % cards; validation; district ANC views; scatter charts; explorer preview.",
   },
   { name: "blood_grouping", meaning: "Women with blood grouping done.", usedIn: "screening_rate_blood_grouping; Pregnancy page; Analytics suite." },
   { name: "cbc_tested", meaning: "CBC tests completed.", usedIn: "screening_rate_cbc; same surfaces." },
@@ -113,7 +112,7 @@ export const HELP_PREGNANT_REGISTERED_SCREENED: HelpField[] = [
   { name: "thyroid_tsh_tested", meaning: "Thyroid TSH tested.", usedIn: "screening_rate_tsh." },
   { name: "gdm_ogtt_tested", meaning: "GDM OGTT tested.", usedIn: "screening_rate_ogtt." },
   { name: "blood_pressure_checked", meaning: "BP measured.", usedIn: "screening_rate_bp." },
-  { name: "height_measured_first_trimester", meaning: "Height measured in first trimester (count).", usedIn: "Section totals & time series; not a named screening_rate in derived.ts." },
+  { name: "height_measured_first_trimester", meaning: "Height measured in first trimester (count).", usedIn: "Section totals and monthly charts; not shown as a headline screening-rate card." },
   { name: "weight_measured_first_trimester", meaning: "Weight measured in first trimester.", usedIn: "Same." },
   { name: "weight_measured_all_trimesters", meaning: "Weight measured across trimesters (as reported).", usedIn: "Same." },
   { name: "phq2_each_trimester", meaning: "PHQ‑2 per trimester (mental health screen).", usedIn: "Same." },
@@ -129,7 +128,7 @@ export const HELP_PREGNANT_IDENTIFIED: HelpField[] = [
   { name: "hypotension", meaning: "Hypotension.", usedIn: "Same." },
   { name: "diabetes_mellitus", meaning: "Diabetes mellitus.", usedIn: "Same." },
   { name: "bmi_lt_18_5", meaning: "BMI < 18.5 (underweight).", usedIn: "Same; anemia_vs_bmi pregnancy BMI band sum." },
-  { name: "bmi_lt_25", meaning: "BMI-related flag as per source form (field name fixed in schema).", usedIn: "Same; BMI band sum for correlations." },
+  { name: "bmi_lt_25", meaning: "BMI-related flag as defined on the source assessment form.", usedIn: "Same; BMI band sum for correlations." },
   { name: "inadequate_gestational_weight_gain", meaning: "Inadequate gestational weight gain.", usedIn: "Same." },
   { name: "severe_anemia_hb_lt_7", meaning: "Severe anemia Hb < 7.", usedIn: "Same; anemia counts for correlations & pregAnemiaVsLive." },
   { name: "moderate_anemia_hb_7_to_9_9", meaning: "Moderate anemia Hb 7–9.9.", usedIn: "Same." },
@@ -138,7 +137,7 @@ export const HELP_PREGNANT_IDENTIFIED: HelpField[] = [
 ];
 
 export const HELP_PREGNANT_MANAGED: HelpField[] = [
-  { name: "hiv", meaning: "Pregnant women with HIV under management.", usedIn: "Pregnancy page; management_gap.pregnancy_gap; validateManagedVsIdentified." },
+  { name: "hiv", meaning: "Pregnant women with HIV under management.", usedIn: "Pregnancy page; management-gap views; validation." },
   { name: "syphilis", meaning: "Syphilis — managed.", usedIn: "Same." },
   { name: "hypothyroidism", meaning: "Hypothyroidism — managed.", usedIn: "Same." },
   { name: "hyperthyroidism", meaning: "Hyperthyroidism — managed.", usedIn: "Same." },
@@ -146,7 +145,7 @@ export const HELP_PREGNANT_MANAGED: HelpField[] = [
   { name: "hypotension", meaning: "Hypotension — managed.", usedIn: "Same." },
   { name: "diabetes_mellitus", meaning: "Diabetes mellitus — managed.", usedIn: "Same." },
   { name: "bmi_lt_18_5", meaning: "BMI < 18.5 — managed.", usedIn: "Same." },
-  { name: "bmi_lt_25", meaning: "BMI flag per schema — managed.", usedIn: "Same." },
+  { name: "bmi_lt_25", meaning: "BMI flag per source form — managed.", usedIn: "Same." },
   { name: "inadequate_gestational_weight_gain", meaning: "Inadequate gestational weight gain — managed.", usedIn: "Same." },
   { name: "severe_anemia_hb_lt_7", meaning: "Severe anemia Hb < 7 — managed.", usedIn: "Same." },
   { name: "moderate_anemia_hb_7_to_9_9", meaning: "Moderate anemia Hb 7–9.9 — managed.", usedIn: "Same." },
@@ -167,7 +166,7 @@ export const HELP_DELIVERY_OUTCOMES: HelpField[] = [
   { name: "institutional_delivery_facility", meaning: "Deliveries in reporting facility.", usedIn: "institutional_delivery_ratio numerator part." },
   { name: "institutional_delivery_other", meaning: "Institutional deliveries outside reporting facility.", usedIn: "institutional_delivery_ratio numerator part." },
   { name: "home_deliveries", meaning: "Home deliveries.", usedIn: "institutional_delivery_ratio denominator mix." },
-  { name: "maternal_deaths", meaning: "Maternal deaths in window.", usedIn: "mortality_rate; alerts; anomalies(maternal_deaths); district rollup; funnel." },
+  { name: "maternal_deaths", meaning: "Maternal deaths in window.", usedIn: "Mortality rate; alerts; maternal-death outlier list on Outcomes; district rollup; programme funnel." },
   { name: "live_births", meaning: "Live births — **denominator** for mortality and several rates.", usedIn: "All mortality/LBW/preterm rates; anomalies; correlations matrix; Explorer preview." },
   { name: "vlbw_lt_1500g", meaning: "Very low birth weight < 1500 g.", usedIn: "Section analytics." },
   { name: "lbw_lt_2500g", meaning: "Low birth weight < 2500 g.", usedIn: "lbw_rate." },
@@ -207,7 +206,7 @@ export const HELP_REMARKS: HelpField[] = [
 ];
 
 export const HELP_DOCUMENTS: HelpField[] = [
-  { name: "document_1 … document_6", meaning: "Optional storage keys or URLs for up to six attachments.", usedIn: "Assessment detail full paths; Explorer lists filled slot count." },
+  { name: "document_1 … document_6", meaning: "Optional storage keys or URLs for up to six attachments.", usedIn: "Assessment detail attachments; Explorer shows how many slots are filled." },
 ];
 
 export const HELP_DERIVED_METRICS = [
@@ -219,8 +218,9 @@ export const HELP_DERIVED_METRICS = [
   },
   {
     name: "management_gap",
-    formula: "Per parallel field: identified[k] − managed[k] (preconception and pregnancy keys from sections.ts).",
-    usedIn: "Overview kpis.management_gap; Program overview copy.",
+    formula:
+      "For each matching pair of identified vs managed fields in preconception and pregnancy, gap = identified count minus managed count.",
+    usedIn: "Program overview management-gap summary.",
   },
   {
     name: "mortality_rate_maternal_per_live_birth",
@@ -254,13 +254,13 @@ export const HELP_DERIVED_METRICS = [
     usedIn: "Correlations page; Analytics heatmap matrix includes anemia_pre, bmi_pre, anemia_preg, bmi_preg, live_births.",
   },
   {
-    name: "districtRollup",
+    name: "District summary",
     formula:
       "Groups by facility.district; sums assessments, live_births, maternal_deaths, early_neonatal_deaths, anc_registered_total, hiv_tested_total, hemoglobin_4x_total.",
     usedIn: "Analytics suite district bar chart (HIV and Hb rates vs ANC).",
   },
   {
-    name: "clinicalCrossSection",
+    name: "Clinical scatter pairs",
     formula:
       "Pairs per assessment: ANC vs Hb×4, ANC vs HIV tested; pregnancy anemia sum vs live_births; preconception anemia identified vs managed sums.",
     usedIn: "Analytics suite scatter charts.",
@@ -274,30 +274,30 @@ export const HELP_DERIVED_METRICS = [
     name: "pipelineFunnels",
     formula:
       "Four standardized stage chains (preconception, pregnancy, postnatal, infant) with per-stage counts, conversion from first stage, drop vs prior, and bottleneck index (largest relative drop).",
-    usedIn: "GET /analytics/intelligence; Analytics suite public health charts.",
+    usedIn: "Analytics suite — public health intelligence (pipeline stages).",
   },
   {
     name: "gapTriple / district severity",
     formula:
       "Screening gap: max(0, eligible − observed) with documented numerators; pregnancy treatment gap from identified vs managed sums; district rows combine screening gap rate, treatment gap rate, and LBW rate into a severity score for ranking.",
-    usedIn: "Intelligence payload gaps.*; district heatmap table in Analytics suite.",
+    usedIn: "Public health intelligence — gap analytics; district heatmap in Analytics suite.",
   },
   {
-    name: "correlation_engine (extended)",
+    name: "Extended correlation analysis",
     formula:
       "Pearson and Spearman on assessment-level series; larger correlation matrix; χ² and risk ratio for binary anemia×preterm; linear regression points for scatter panels.",
-    usedIn: "GET /analytics/intelligence.",
+    usedIn: "Analytics suite — extended correlation views.",
   },
   {
     name: "time_series intelligence",
     formula:
       "Monthly aligned buckets for HIV screening %, LBW rate, MA(3), trend split, seasonal index, z-spike indices on monthly values.",
-    usedIn: "Intelligence payload; ComposedChart in Analytics suite.",
+    usedIn: "Public health intelligence — trend charts in Analytics suite.",
   },
   {
     name: "anomaly bundle",
     formula: "Z-score (HIV tests, live births), IQR on HIV tests, isolation-style scores on HIV tests — all assessment-indexed.",
-    usedIn: "GET /analytics/intelligence anomalies.*.",
+    usedIn: "Analytics suite — combined anomaly views in public health intelligence.",
   },
 ];
 
@@ -305,7 +305,7 @@ export const HELP_VALIDATION = [
   {
     code: "SCREENING_EXCEEDS_REGISTERED",
     rule: "Each screening count must be ≤ total_anc_registered (except the total field itself).",
-    usedIn: "Overview validation list; assessment detail validationIssues.",
+    usedIn: "Program overview validation list; assessment detail validation panel.",
   },
   {
     code: "MANAGED_EXCEEDS_IDENTIFIED",
@@ -314,56 +314,31 @@ export const HELP_VALIDATION = [
   },
 ];
 
-export const HELP_API_ROUTES = [
-  { route: "GET …/analytics/overview", role: "KPIs, funnel, alerts, validation issues (cached ~30s)." },
-  { route: "GET …/analytics/section/:section", role: "Totals, fieldMetrics, comparativeDistribution, monthly timeSeries per canonical section key." },
-  { route: "GET …/analytics/intelligence", role: "Public health intelligence: pipelines, gaps, correlations, cohorts, time series, distributions, multivariate, KPI deltas, anomalies (z/IQR/isolation), cross-entity links, deterministic what/why/next insights (cached ~60s)." },
-  { route: "GET …/analytics/decision-support", role: "Decision layer: top 5 actions, program health score 0–100, alert center, illustrative what-if, data quality, benchmarking (half-window + districts), story-mode steps (cached ~45s)." },
-  { route: "GET …/analytics/correlations", role: "anemia_vs_bmi + correlation matrix." },
-  { route: "GET …/analytics/comparison-lab/catalog", role: "Comparison Lab: metric registry + precomputed compatibility matrix (no DB)." },
-  { route: "GET …/analytics/comparison-lab/run?metricA=&metricB=&metricC=", role: "Comparison Lab: filtered assessment rows, stats (Pearson, ANOVA, χ²), auto chart payload; cached ~30s." },
-  { route: "GET …/analytics/district-rollup", role: "District aggregates for charts." },
-  { route: "GET …/analytics/clinical-cross-section", role: "Scatter source pairs." },
-  { route: "GET …/analytics/anomalies?metric=", role: "Z-score flags for live_births or maternal_deaths." },
-  { route: "GET …/analytics/explorer", role: "Lightweight listing + document/remarks meta." },
-  { route: "GET …/analytics/assessments/:id", role: "Full numeric sections + remarks + documents + validation." },
-  { route: "GET …/facilities", role: "List facilities (id, name, district, state) for filters and UI." },
-  { route: "GET …/facilities/districts", role: "Distinct district strings for filter dropdown." },
-  { route: "POST …/ingestion/assessments", role: "Create or update assessment rows (programmatic ingest)." },
-  { route: "GET …/metrics/health", role: "Liveness probe." },
-  { route: "GET …/metrics/counts", role: "Row counts snapshot for ops dashboards." },
-  { route: "GET …/config", role: "Public config: AI flags, LM Studio hints, API base string for clients." },
-  { route: "GET …/ai/status", role: "Whether server-side AI client is enabled (env-gated)." },
-  { route: "GET …/ai/models", role: "Proxies LM Studio OpenAI-compatible GET /v1/models when LM_STUDIO_BASE_URL is set." },
-  { route: "POST …/ai/insights", role: "LLM narrative from an arbitrary JSON snapshot (typically overview); counts must come from client payload." },
-  { route: "POST …/ai/intelligence-insights", role: "Returns deterministic insights block from payload plus optional LLM text grounded in public health intelligence JSON." },
-];
-
-/** Keys accepted by `GET /analytics/section/:section` (must match analytics.service pickers). */
-export const HELP_SECTION_ENDPOINT_KEYS = [
-  "preconception_women_identified",
-  "preconception_interventions",
-  "preconception_women_managed",
-  "pregnant_women_registered_and_screened",
-  "pregnant_women_identified",
-  "pregnant_women_managed",
-  "high_risk_pregnancy",
-  "delivery_and_outcomes",
-  "infants_0_to_24_months",
-  "postnatal_women",
+/** Each row is one clinical chapter in the product (section totals, charts, and field cards). */
+export const HELP_CLINICAL_SECTIONS = [
+  { key: "preconception_women_identified", title: "Preconception — women identified" },
+  { key: "preconception_interventions", title: "Preconception — interventions" },
+  { key: "preconception_women_managed", title: "Preconception — women managed" },
+  { key: "pregnant_women_registered_and_screened", title: "Pregnancy — registered & screened (ANC)" },
+  { key: "pregnant_women_identified", title: "Pregnancy — women identified" },
+  { key: "pregnant_women_managed", title: "Pregnancy — women managed" },
+  { key: "high_risk_pregnancy", title: "High-risk pregnancy" },
+  { key: "delivery_and_outcomes", title: "Delivery & outcomes" },
+  { key: "infants_0_to_24_months", title: "Infants 0–24 months" },
+  { key: "postnatal_women", title: "Postnatal women" },
 ] as const;
 
 export const HELP_PAGE_MAP = [
-  { page: "Program overview", path: "/overview", data: "overview KPIs, alerts, validation count, anomalies." },
-  { page: "Analytics suite", path: "/analytics", data: "Public health intelligence (pipelines, gaps, charts), overview-derived metrics, district chart, funnel bars, matrix, scatters." },
-  { page: "Preconception", path: "/preconception", data: "Sections: preconception_women_identified, _managed, preconception_interventions." },
-  { page: "Pregnancy", path: "/pregnancy", data: "registered_and_screened, identified, managed." },
-  { page: "Postnatal", path: "/postnatal", data: "postnatal_women." },
-  { page: "Infants", path: "/infants", data: "infants_0_to_24_months." },
-  { page: "Outcomes", path: "/outcomes", data: "delivery_and_outcomes." },
-  { page: "High-risk", path: "/high-risk", data: "high_risk_pregnancy." },
-  { page: "Correlations", path: "/correlations", data: "correlations endpoint." },
-  { page: "Explorer", path: "/explorer", data: "explorer listing; drill to /explorer/[id] for assessment detail." },
-  { page: "AI Insights", path: "/ai", data: "Sends **overview** and/or **intelligence** JSON to LLM when enabled — counts remain API-sourced; deterministic blocks always available from /analytics/intelligence." },
-  { page: "Settings", path: "/settings", data: "Public config only (not row data)." },
+  { page: "Program overview", path: "/overview", data: "Headline KPIs, funnel, alerts, validation summary, live-birth outliers." },
+  { page: "Analytics suite", path: "/analytics", data: "Public health intelligence — pipelines, gaps, district views, charts, correlation matrix, scatters." },
+  { page: "Preconception", path: "/preconception", data: "Women identified, interventions, women managed." },
+  { page: "Pregnancy", path: "/pregnancy", data: "ANC registration & screening, identified conditions, managed conditions." },
+  { page: "Postnatal", path: "/postnatal", data: "Postnatal women — visits, screening, support." },
+  { page: "Infants", path: "/infants", data: "Infants 0–24 months — feeding, growth, immunisation." },
+  { page: "Outcomes", path: "/outcomes", data: "Delivery & outcomes — births, deaths, LBW, preterm, anomaly list." },
+  { page: "High-risk", path: "/high-risk", data: "High-risk pregnancy flags." },
+  { page: "Correlations", path: "/correlations", data: "Anemia vs BMI, extended correlation matrix, before/after views." },
+  { page: "Explorer", path: "/explorer", data: "Searchable assessment list; open a row for full detail." },
+  { page: "AI Insights", path: "/ai", data: "Optional narratives from the same filtered overview and intelligence you see in Analytics — counts always come from the dashboard, not from model invention." },
+  { page: "Settings", path: "/settings", data: "Deployment options shown to administrators (no patient row data)." },
 ];
