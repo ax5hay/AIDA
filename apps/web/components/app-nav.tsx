@@ -8,11 +8,13 @@ import { AiximiusMark, cn } from "@aida/ui";
 import { AppNavRailProvider } from "@/components/app-nav-context";
 import { DecisionSupportDock } from "@/components/decision-support-dock";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; external?: boolean };
 
 type MobileCategoryKey = "command" | "clinical" | "analysis";
 
 const MOBILE_NAV_BAR_OFFSET = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
+
+const parityWebBase = () => (process.env.NEXT_PUBLIC_PARITY_WEB_URL ?? "http://localhost:3001").replace(/\/$/, "");
 
 const groups: Array<{ title: string; blurb: string; items: NavItem[] }> = [
   {
@@ -46,6 +48,11 @@ const groups: Array<{ title: string; blurb: string; items: NavItem[] }> = [
     ],
   },
   {
+    title: "Parity",
+    blurb: "ANC workspace · separate app",
+    items: [{ href: `${parityWebBase()}/`, label: "Product hub", external: true }],
+  },
+  {
     title: "System",
     blurb: "Narrative & config",
     items: [
@@ -69,6 +76,7 @@ function hrefWithQuery(href: string, search: string) {
 
 function isNavActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
+  if (href.startsWith("http")) return false;
   if (href === "/") return pathname === "/";
   if (href === "/explorer") return pathname.startsWith("/explorer");
   if (href === "/ai") return pathname === "/ai" || pathname.startsWith("/ai/");
@@ -113,7 +121,7 @@ export function AppNavLayout({ children }: { children: ReactNode }) {
           ? groups[2]
           : null;
 
-  const aiNavItem = groups[3].items.find((i) => i.href === "/ai");
+  const aiNavItem = groups.flatMap((g) => g.items).find((i) => i.href === "/ai");
   const aiActive = aiNavItem ? isNavActive(pathname, aiNavItem.href) : false;
 
   return (
@@ -148,6 +156,29 @@ export function AppNavLayout({ children }: { children: ReactNode }) {
                 <p className="px-2 text-[10px] text-zinc-700">{group.blurb}</p>
                 <ul className="mt-2 space-y-0.5">
                   {group.items.map((item) => {
+                    if (item.external) {
+                      return (
+                        <li key={`ext-${item.label}`}>
+                          <a
+                            href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative flex min-h-[44px] items-center gap-2 rounded-lg border border-dashed border-cyan-500/25 bg-cyan-500/[0.06] px-2.5 py-2 text-sm text-cyan-100/95 transition-colors hover:border-cyan-400/40 hover:bg-cyan-500/12"
+                          >
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-cyan-400/30 bg-cyan-500/15 text-[10px] font-bold text-cyan-200">
+                              P
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium">{item.label}</span>
+                              <span className="mt-0.5 block text-[10px] leading-snug text-cyan-200/60">
+                                Parity web · new tab
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-[11px] font-medium text-cyan-400/80">↗</span>
+                          </a>
+                        </li>
+                      );
+                    }
                     const active = isNavActive(pathname, item.href);
                     const to = hrefWithQuery(item.href, qs);
                     return (
@@ -357,6 +388,28 @@ export function AppNavLayout({ children }: { children: ReactNode }) {
                     <p className="px-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">{group.title}</p>
                     <ul className="mt-2">
                       {group.items.map((item) => {
+                        if (item.external) {
+                          return (
+                            <li key={`ext-${item.label}`}>
+                              <a
+                                href={item.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setDrawerOpen(false)}
+                                className="flex min-h-[52px] items-center gap-2 border-b border-white/5 px-3 text-sm text-cyan-100/90"
+                              >
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 text-xs font-bold text-cyan-200">
+                                  P
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block font-medium">{item.label}</span>
+                                  <span className="text-[10px] text-cyan-200/55">Parity · new tab</span>
+                                </span>
+                                <span className="text-cyan-400/80">↗</span>
+                              </a>
+                            </li>
+                          );
+                        }
                         const active = isNavActive(pathname, item.href);
                         return (
                           <li key={item.href}>

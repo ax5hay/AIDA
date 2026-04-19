@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-screen antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}

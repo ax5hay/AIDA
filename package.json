@@ -10,14 +10,17 @@
   },
   "scripts": {
     "build": "npm run db:generate && npm run build:packages && npm run build:apps",
-    "build:packages": "npm run build -w @aida/db -w @aida/analytics-engine -w @aida/ml-engine -w @aida/ai-engine -w @aida/ui",
-    "build:apps": "npm run build -w @aida/api -w @aida/web",
+    "build:packages": "npm run build -w @aida/db -w @aida/parity-core -w @aida/analytics-engine -w @aida/ml-engine -w @aida/ai-engine -w @aida/ui",
+    "build:apps": "npm run build -w @aida/api -w @aida/web -w @aida/parity-api -w @aida/parity-web",
     "dev:api": "npm run dev -w @aida/api",
     "dev:web": "npm run dev -w @aida/web",
+    "dev:parity-api": "npm run dev -w @aida/parity-api",
+    "dev:parity-web": "npm run dev -w @aida/parity-web",
     "db:generate": "npx prisma generate --schema packages/db/prisma/schema.prisma",
     "db:push": "npx prisma db push --schema packages/db/prisma/schema.prisma",
     "db:migrate": "npx prisma migrate dev --schema packages/db/prisma/schema.prisma",
     "db:seed": "npx tsx packages/db/prisma/seed.ts",
+    "parity:synthetic-seed": "npx tsx packages/db/prisma/parity-synthetic-seed.ts",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {

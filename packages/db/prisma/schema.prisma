@@ -253,3 +253,160 @@ model Documents {
   document_5 String?
   document_6 String?
 }
+
+// -----------------------------------------------------------------------------
+// PARITY — ANC monthly capture (Excel-aligned). Standalone from ChcAssessment.
+// Hierarchy: District → Block → Region → Facility (typed CH/CHC/PHC/RH) → monthly submission.
+// -----------------------------------------------------------------------------
+
+model ParityDistrict {
+  id           String               @id @default(cuid())
+  name         String               @unique
+  sortOrder    Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  blocks       ParityBlock[]
+  submissions  ParityAncSubmission[]
+}
+
+model ParityBlock {
+  id          String               @id @default(cuid())
+  name        String
+  districtId  String
+  district    ParityDistrict       @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  sortOrder   Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  regions     ParityRegion[]
+  submissions ParityAncSubmission[]
+
+  @@unique([districtId, name])
+  @@index([districtId])
+}
+
+model ParityFacilityType {
+  id          String           @id @default(cuid())
+  code        String           @unique
+  label       String
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  facilities  ParityFacility[]
+}
+
+/// Geographic / administrative unit under a block (e.g. Dhussada, Chintpurni).
+model ParityRegion {
+  id          String               @id @default(cuid())
+  name        String
+  blockId     String
+  block       ParityBlock          @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  sortOrder   Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  facilities  ParityFacility[]
+  submissions ParityAncSubmission[]
+
+  @@unique([blockId, name])
+  @@index([blockId])
+}
+
+/// Concrete facility in a region with a facility type (e.g. CHC Chintpurni).
+model ParityFacility {
+  id             String               @id @default(cuid())
+  name           String
+  regionId       String
+  region         ParityRegion         @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  facilityTypeId String
+  facilityType   ParityFacilityType   @relation(fields: [facilityTypeId], references: [id], onDelete: Restrict)
+  sortOrder      Int                  @default(0)
+  createdAt      DateTime             @default(now())
+  submissions    ParityAncSubmission[]
+
+  @@unique([regionId, name])
+  @@index([regionId])
+  @@index([facilityTypeId])
+}
+
+/// One row = one facility ANC return. `periodDay` 0 = whole-month return; 1–31 = that calendar day (daily capture).
+model ParityAncSubmission {
+  id         String   @id @default(cuid())
+  districtId String
+  blockId    String
+  regionId   String
+  facilityId String
+  periodYear Int
+  periodMonth Int
+  /// 0 = monthly return for (year, month); 1–31 = daily return for that calendar date.
+  periodDay  Int      @default(0)
+
+  district ParityDistrict @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  block    ParityBlock    @relation(fields: [blockId], references: [id], onDelete: Restrict)
+  region   ParityRegion   @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  facility ParityFacility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  remarks String?
+
+  totalWomenAttendedAnc                Int?
+  noOfWomenObserved                    Int?
+  mcpCardProvided                      Int?
+  womenRegisteredIn1stTrimester        Int?
+  broughtMcpCard                       Int?
+  mcpCardDulyFilled                    Int?
+  trimesterFirst                       Int?
+  trimesterSecond                      Int?
+  trimesterThird                       Int?
+  td1                                  Int?
+  td2                                  Int?
+  tdBooster                            Int?
+  height                               Int?
+  weightMeasuredFirstTrimester         Int?
+  bmiCalculatedFirstTrimester          Int?
+  womenBmiLte185                       Int?
+  womenBmi185To2499                    Int?
+  womenBmiGte25                        Int?
+  weightMeasuredSecondTrimester        Int?
+  weightMeasuredThirdTrimester         Int?
+  bpMeasuredFirstTrimester             Int?
+  bpMeasuredSecondTrimester            Int?
+  bpMeasuredThirdTrimester             Int?
+  hbByCbcFirstVisit                    Int?
+  bloodGroupingFirstVisit              Int?
+  hbEveryVisit                         Int?
+  tshFirstVisit                        Int?
+  ogttFirstVisit                       Int?
+  rbsFirstVisit                        Int?
+  urineRe                              Int?
+  hbsag                                Int?
+  hiv                                  Int?
+  vdrl                                 Int?
+  usg                                  Int?
+  tbScreening                          Int?
+  phq2Administered                     Int?
+  phqScore0To2                         Int?
+  phqScore3To5                         Int?
+  counsellingProvided                  Int?
+  phqScore6                            Int?
+  referral                             Int?
+  mildAnemia                           Int?
+  moderateAnemia                       Int?
+  severeAnemia                         Int?
+  hypertensive                         Int?
+  gdm                                  Int?
+  hypothyroidism                       Int?
+  hyperthyroidism                      Int?
+  abdominalExamination                 Int?
+  hrpIdentification                    Int?
+  hrpRedCardCount                      Int?
+  womenReferredHigherFacilities        Int?
+  womenManagedHighRisk                 Int?
+  pwGivenFaFirstTrimester              Int?
+  pwGivenAlbendazoleSecondTrimester    Int?
+  pwProvidedIfaTabletsSecondTrimester  Int?
+  ifaTabletsPerWoman                   Int?
+  womenCalciumVitaminD                 Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([facilityId, periodYear, periodMonth, periodDay])
+  @@index([districtId, periodYear, periodMonth, periodDay])
+  @@index([blockId, periodYear, periodMonth, periodDay])
+  @@index([regionId, periodYear, periodMonth, periodDay])
+  @@index([facilityId])
+}

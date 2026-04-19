@@ -11,3 +11,4 @@ coverage
 apps/api/dist
 packages/*/dist
 *.tsbuildinfo
+Excel_Sheets/
