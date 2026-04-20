@@ -5,8 +5,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AiximiusMark, cn } from "@aida/ui";
+import { DEFAULT_AIDA_WEB_BASE } from "@/lib/aida-web-default";
 
-const aidaBase = () => (process.env.NEXT_PUBLIC_AIDA_WEB_URL ?? "http://localhost:3000").replace(/\/$/, "");
+/** Set by server layout from `getAidaWebBaseFromEnv()` — use for hub + rail AIDA links. */
+export const AidaWebBaseContext = createContext<string>(DEFAULT_AIDA_WEB_BASE);
+
+export function useAidaWebBase(): string {
+  return useContext(AidaWebBaseContext);
+}
 
 type NavItem = { href: string; label: string; external?: boolean };
 
@@ -35,12 +41,6 @@ const workspaceGroup: { title: string; blurb: string; items: NavItem[] } = {
   ],
 };
 
-const aidaLaunchItem: NavItem = {
-  href: `${aidaBase()}/overview`,
-  label: "Open AIDA",
-  external: true,
-};
-
 const mobileQuickLinks: NavItem[] = [
   { href: "/", label: "Hub" },
   { href: "/insights", label: "Analytics" },
@@ -60,12 +60,18 @@ function isNavActive(pathname: string | null, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function ParityAppNavLayout({ children }: { children: ReactNode }) {
+export function ParityAppNavLayout({ children, aidaWebBase }: { children: ReactNode; aidaWebBase: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
+
+  const aidaLaunchItem: NavItem = {
+    href: `${aidaWebBase}/overview`,
+    label: "Open AIDA",
+    external: true,
+  };
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -152,6 +158,7 @@ export function ParityAppNavLayout({ children }: { children: ReactNode }) {
   };
 
   return (
+    <AidaWebBaseContext.Provider value={aidaWebBase}>
     <ParityNavRailProvider railOpen={railOpen}>
       <div className="relative flex min-h-screen flex-col md:flex-row">
         <aside
@@ -339,5 +346,6 @@ export function ParityAppNavLayout({ children }: { children: ReactNode }) {
         ) : null}
       </AnimatePresence>
     </ParityNavRailProvider>
+    </AidaWebBaseContext.Provider>
   );
 }

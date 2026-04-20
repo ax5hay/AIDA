@@ -21,6 +21,7 @@
     "db:migrate": "npx prisma migrate dev --schema packages/db/prisma/schema.prisma",
     "db:seed": "npx tsx packages/db/prisma/seed.ts",
     "parity:synthetic-seed": "npx tsx packages/db/prisma/parity-synthetic-seed.ts",
+    "verify:parity-aida-url": "node scripts/verify-parity-aida-url.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {

@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { AppNavLayout } from "@/components/app-nav";
+import { getParityWebBaseFromEnv } from "@/lib/parity-web-url.server";
+
+export const dynamic = "force-dynamic";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const parityWebBase = getParityWebBaseFromEnv();
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#07080c]" />}>
-      <AppNavLayout>
+      <AppNavLayout parityWebBase={parityWebBase}>
         <Suspense
           fallback={
             <div className="min-h-[60vh] bg-[#07080c]">

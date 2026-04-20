@@ -5,9 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { AiximiusMark } from "@aida/ui";
-
-const aidaBase = (process.env.NEXT_PUBLIC_AIDA_WEB_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const aidaOverview = `${aidaBase}/overview`;
+import { useAidaWebBase } from "@/components/parity-app-nav";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -32,6 +30,9 @@ function HubUrlCleanup() {
 }
 
 export default function ProductHubPage() {
+  const aidaBase = useAidaWebBase();
+  const aidaOverview = `${aidaBase}/overview`;
+
   return (
     <div className="relative min-h-[min(100dvh,920px)] overflow-x-hidden">
       <Suspense fallback={null}>
@@ -171,7 +172,11 @@ export default function ProductHubPage() {
               </li>
               <li className="flex gap-2.5">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400/80 shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
-                <span>Configured via <span className="font-mono text-zinc-400">NEXT_PUBLIC_AIDA_WEB_URL</span>.</span>
+                <span>
+                  Set <span className="font-mono text-zinc-400">AIDA_WEB_URL</span> in repo{" "}
+                  <span className="font-mono text-zinc-400">.env</span> for demos (avoids Next build-time inlining of{" "}
+                  <span className="font-mono text-zinc-400">NEXT_PUBLIC_*</span>).
+                </span>
               </li>
             </ul>
             <div className="relative mt-7">

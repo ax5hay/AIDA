@@ -1,11 +1,16 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { ParityAppNavLayout } from "@/components/parity-app-nav";
+import { getAidaWebBaseFromEnv } from "@/lib/aida-web-url.server";
+
+/** Server reads env each request; use `AIDA_WEB_URL` in repo `.env` for demo (not inlined like `NEXT_PUBLIC_*`). */
+export const dynamic = "force-dynamic";
 
 export default function ParityAppLayout({ children }: { children: ReactNode }) {
+  const aidaWebBase = getAidaWebBaseFromEnv();
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#07080c]" />}>
-      <ParityAppNavLayout>
+      <ParityAppNavLayout aidaWebBase={aidaWebBase}>
         <Suspense
           fallback={
             <div className="min-h-[60vh] bg-[#07080c]">

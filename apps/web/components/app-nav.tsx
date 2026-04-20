@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AiximiusMark, cn } from "@aida/ui";
 import { AppNavRailProvider } from "@/components/app-nav-context";
@@ -14,54 +14,55 @@ type MobileCategoryKey = "command" | "clinical" | "analysis";
 
 const MOBILE_NAV_BAR_OFFSET = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
 
-const parityWebBase = () => (process.env.NEXT_PUBLIC_PARITY_WEB_URL ?? "http://localhost:3001").replace(/\/$/, "");
-
-const groups: Array<{ title: string; blurb: string; items: NavItem[] }> = [
-  {
-    title: "Command center",
-    blurb: "Filters apply everywhere",
-    items: [
-      { href: "/overview", label: "Overview" },
-      { href: "/analytics", label: "Analytics" },
-      { href: "/explorer", label: "Explorer" },
-      { href: "/input", label: "Data input" },
-    ],
-  },
-  {
-    title: "Clinical chapters",
-    blurb: "Section-scoped views",
-    items: [
-      { href: "/preconception", label: "Preconception" },
-      { href: "/pregnancy", label: "Pregnancy" },
-      { href: "/postnatal", label: "Postnatal" },
-      { href: "/infants", label: "Infants" },
-      { href: "/outcomes", label: "Outcomes" },
-      { href: "/high-risk", label: "High-risk" },
-    ],
-  },
-  {
-    title: "Analysis",
-    blurb: "Patterns & proof",
-    items: [
-      { href: "/correlations", label: "Correlations" },
-      { href: "/comparison-lab", label: "Comparison lab" },
-    ],
-  },
-  {
-    title: "Parity",
-    blurb: "ANC workspace · separate app",
-    items: [{ href: `${parityWebBase()}/`, label: "Product hub", external: true }],
-  },
-  {
-    title: "System",
-    blurb: "Narrative & config",
-    items: [
-      { href: "/ai", label: "AI insights" },
-      { href: "/settings", label: "Settings" },
-      { href: "/help", label: "Help" },
-    ],
-  },
-];
+function buildNavGroups(parityWebBase: string): Array<{ title: string; blurb: string; items: NavItem[] }> {
+  const base = parityWebBase.replace(/\/$/, "");
+  return [
+    {
+      title: "Command center",
+      blurb: "Filters apply everywhere",
+      items: [
+        { href: "/overview", label: "Overview" },
+        { href: "/analytics", label: "Analytics" },
+        { href: "/explorer", label: "Explorer" },
+        { href: "/input", label: "Data input" },
+      ],
+    },
+    {
+      title: "Clinical chapters",
+      blurb: "Section-scoped views",
+      items: [
+        { href: "/preconception", label: "Preconception" },
+        { href: "/pregnancy", label: "Pregnancy" },
+        { href: "/postnatal", label: "Postnatal" },
+        { href: "/infants", label: "Infants" },
+        { href: "/outcomes", label: "Outcomes" },
+        { href: "/high-risk", label: "High-risk" },
+      ],
+    },
+    {
+      title: "Analysis",
+      blurb: "Patterns & proof",
+      items: [
+        { href: "/correlations", label: "Correlations" },
+        { href: "/comparison-lab", label: "Comparison lab" },
+      ],
+    },
+    {
+      title: "Parity",
+      blurb: "ANC workspace · separate app",
+      items: [{ href: `${base}/`, label: "Product hub", external: true }],
+    },
+    {
+      title: "System",
+      blurb: "Narrative & config",
+      items: [
+        { href: "/ai", label: "AI insights" },
+        { href: "/settings", label: "Settings" },
+        { href: "/help", label: "Help" },
+      ],
+    },
+  ];
+}
 
 const mobileCategoryGroups: ReadonlyArray<{ key: MobileCategoryKey; groupIndex: 0 | 1 | 2 }> = [
   { key: "command", groupIndex: 0 },
@@ -87,13 +88,15 @@ function isCategoryActive(pathname: string | null, items: NavItem[]): boolean {
   return items.some((item) => isNavActive(pathname, item.href));
 }
 
-export function AppNavLayout({ children }: { children: ReactNode }) {
+export function AppNavLayout({ children, parityWebBase }: { children: ReactNode; parityWebBase: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
   const [mobileCategorySheet, setMobileCategorySheet] = useState<MobileCategoryKey | null>(null);
+
+  const groups = useMemo(() => buildNavGroups(parityWebBase), [parityWebBase]);
 
   useEffect(() => {
     setDrawerOpen(false);

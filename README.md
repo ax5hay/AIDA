@@ -14,6 +14,8 @@ Health facility reporting data turned into something you can actually brief from
 
 The UI never opens a database connection. Everything goes **Postgres → Prisma (`@aida/db`) → Nest API → Next.js**, with aggregations and derived metrics living in **`@aida/analytics-engine`** so the math stays in one place and the UI stays dumb.
 
+The same monorepo also ships **Parity** — a disciplined **ANC capture, analytics, and observation** workspace (`apps/parity-web`, `apps/parity-api`, `packages/parity-core`). AIDA and Parity share a visual language and a **product hub**: each app’s sidebar links to the hub on the other host when you configure cross-app URLs (see [Parity & product hub](#parity--product-hub)).
+
 ---
 
 ## Why this exists (use case)
@@ -44,24 +46,51 @@ flowchart LR
   DB["@aida/db · Prisma"]
   AE["@aida/analytics-engine"]
   ML["@aida/ml-engine"]
-  API[NestJS API]
-  WEB[Next.js App]
+  API[Nest AIDA API]
+  WEB[AIDA web]
+  PC["@aida/parity-core"]
+  PAPI[Parity API]
+  PWEB[Parity web]
   PG --> DB
   DB --> API
+  DB --> PAPI
   AE --> API
   ML --> API
   API --> WEB
+  PC --> PAPI
+  PAPI --> PWEB
 ```
 
 | Piece | What it owns |
 |-------|----------------|
-| `packages/db` | Prisma schema (field names are fixed; they match source forms), generated client |
+| `packages/db` | Prisma schema (AIDA + Parity models), generated client |
 | `packages/analytics-engine` | Sums, derived rates (mortality, LBW, preterm, institutional delivery mix), validation helpers |
 | `packages/ml-engine` | Z-score anomaly flags, correlation matrix glue |
 | `packages/ai-engine` | OpenAI-compatible client for optional insights |
 | `packages/ui` | Shared layout and widgets (`PageShell`, KPI strips, etc.) |
+| `packages/parity-core` | ANC indicator schema, validation, analytics bundle for Parity |
 | `apps/api` | Nest modules: analytics, metrics, facilities, ingestion, optional AI |
-| `apps/web` | App Router, TanStack Query, Recharts, filter state in the URL |
+| `apps/web` | Full AIDA App Router UI (overview, analytics, explorer, correlations, optional AI, …) |
+| `apps/parity-api` | Nest API for Parity taxonomy, submissions, observability (`/v1/parity/...`) |
+| `apps/parity-web` | Parity workspace UI (hub, capture, analytics, observation centre) |
+
+---
+
+## Parity & product hub
+
+**Product hub** is the entry surface that lets users choose **Parity** vs **full AIDA**. In development, Parity web is usually [http://localhost:3001](http://localhost:3001); AIDA web is [http://localhost:3000](http://localhost:3000).
+
+| Navigation | Resolved with |
+|-------------|----------------|
+| AIDA sidebar → **Product hub** (Parity) | **`PARITY_WEB_URL`** (preferred). Server-side resolution reads repo-root `.env` at runtime so tunnel or demo hosts work after deploy without rebuilding. |
+| Parity sidebar / hub → **Launch AIDA** | **`AIDA_WEB_URL`** (same pattern on the Parity app). |
+| Optional `NEXT_PUBLIC_PARITY_WEB_URL` / `NEXT_PUBLIC_AIDA_WEB_URL` | Inlined at **`next build`** time. Fine for fixed URLs; for changing demo domains, rely on the non-`NEXT_PUBLIC_*` variables above. |
+
+**CORS:** the AIDA API uses **`WEB_ORIGIN`** (browser origin for the AIDA web app). The Parity API uses **`PARITY_WEB_ORIGIN`** (see `apps/parity-api/.env.example`). Set each to the exact origin users type in the address bar (local, ngrok, or your public demo host).
+
+**Reference:** Parity-only setup, HTTP routes, seeds, and Excel lineage — [docs/PARITY.md](./docs/PARITY.md).
+
+**Smoke test:** after editing `.env`, `npm run verify:parity-aida-url` loads the root env and prints how Parity would resolve the AIDA base (extend or mirror checks as needed for your deploy).
 
 ---
 
@@ -78,8 +107,10 @@ chmod +x run.sh
 
 | Service | URL |
 |---------|-----|
-| Web | [http://localhost:3000](http://localhost:3000) |
-| API health | [http://localhost:4000/v1/metrics/health](http://localhost:4000/v1/metrics/health) |
+| AIDA web | [http://localhost:3000](http://localhost:3000) |
+| AIDA API health | [http://localhost:4000/v1/metrics/health](http://localhost:4000/v1/metrics/health) |
+
+Compose in this repo starts **Postgres + AIDA API + AIDA web** only. To run **Parity** as well, use local Node scripts (below) or **`./scripts/demo-start.sh`**, which brings up Postgres, both APIs, and both web apps.
 
 First image build can take a few minutes. Dockerfiles are cache-friendly (`npm ci` + lockfile), so subsequent builds are much faster when dependency manifests do not change.
 
@@ -112,12 +143,21 @@ Run these from the **repository root**:
 | Step | Command / action |
 |------|------------------|
 | 1. Install | `npm install` |
-| 2. Env | Copy `.env.example` → `.env`. Set at least `DATABASE_URL` for Prisma. |
+| 2. Env | Copy `.env.example` → `.env`. Set at least `DATABASE_URL`. For cross-app links and demos, set **`PARITY_WEB_URL`**, **`AIDA_WEB_URL`**, and **`WEB_ORIGIN`** as described in [Parity & product hub](#parity--product-hub) (`.env.example` is grouped by section). |
 | 3. Client + schema | `npm run db:generate` then `npm run db:push` |
 | 4. Seed | `npm run db:seed` (synthetic but logically consistent counts, optional if DB already has data) |
-| 5. Build | `npm run build` (packages then apps) |
+| 5. Build | `npm run build` (packages then AIDA + Parity apps) |
 | 6. API | `npm run dev:api` → default base `http://localhost:4000/v1` |
 | 7. Web | `npm run dev:web` → `http://localhost:3000` |
+
+**Parity (optional, same DB):**
+
+| Step | Command / action |
+|------|------------------|
+| API | `cp apps/parity-api/.env.example apps/parity-api/.env` → set `DATABASE_URL` (and `PARITY_WEB_ORIGIN` if not using default `http://localhost:3001`) → `npm run dev:parity-api` → [http://localhost:4010](http://localhost:4010) |
+| Web | `cp apps/parity-web/.env.example apps/parity-web/.env.local` → `npm run dev:parity-web` → [http://localhost:3001](http://localhost:3001) |
+
+**Full local demo stack (one script):** `./scripts/demo-start.sh` starts Postgres (Docker), AIDA API/Web, and Parity API/Web; optional `--tunnel` runs **cloudflared** when `DEMO_TUNNEL_UUID` (or `CLOUDFLARED_TUNNEL_ID`) is set.
 
 Point the browser at the web app with `NEXT_PUBLIC_API_URL` if the API is not the default (e.g. `http://localhost:4000/v1`).
 
@@ -134,7 +174,9 @@ The repo is set up so the Next app can proxy API traffic: browser uses `NEXT_PUB
 1. Start API and web (`npm run dev:api` and `npm run dev:web`).
 2. `ngrok http 3000`
 3. Open the printed `https://….ngrok-free.app` URL.
-4. Set `WEB_ORIGIN` in `.env` to that exact origin and restart the API so CORS matches.
+4. Set **`WEB_ORIGIN`** in repo-root `.env` to that exact HTTPS origin and restart the **AIDA** API. If you expose **Parity** on a separate tunnel or host, set **`PARITY_WEB_ORIGIN`** in `apps/parity-api/.env` to the Parity web origin and restart **Parity** API.
+
+5. Set **`AIDA_WEB_URL`** and **`PARITY_WEB_URL`** in repo-root `.env` to the public bases (no trailing slash) so sidebar and hub links target the tunnel or demo hosts without a rebuild.
 
 If the tunnel URL is wrong or truncated, Safari will fail in opaque ways; the ngrok local inspector at `http://127.0.0.1:4040` shows the real forwarding URL.
 
@@ -154,6 +196,8 @@ The UI can list models via `GET /v1/ai/models` and pass `model` in `POST /v1/ai/
 ---
 
 ## API (selected)
+
+AIDA routes below are served from **`apps/api`** (`/v1/...`). Parity routes (`/v1/parity/...`) live in **`apps/parity-api`** — see [docs/PARITY.md](./docs/PARITY.md).
 
 | Method | Path | What you get |
 |--------|------|----------------|

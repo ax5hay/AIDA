@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PARITY_INT_KEYS } from "./indicators.js";rt { PARITY_INT_KEYS } from "./indicators.js";rt { PARITY_INT_KEYS } from "./indicators.js";rt { PARITY_INT_KEYS } from "./indicators.js";
+import { PARITY_INT_KEYS } from "./indicators.js";
 
 const id = z.string().min(1);
 const nullableNat = z.union([z.number().int().min(0).max(100_000_000), z.null()]);
